@@ -5,7 +5,7 @@ export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <header className="bg-white shadow-md">
+    <header className="bg-white border-b border-gray-200 sticky top-0 left-0 w-full z-20">
       <div className="lg:px-16 px-4 flex justify-between items-center py-4">
         {/* Logo */}
         <Link to="/" className="text-2xl font-bold text-blue-600">
