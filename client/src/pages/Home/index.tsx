@@ -1,10 +1,12 @@
 import React from "react";
 import SubjectCard from "../../components/ui/SubjectCard";
 import { CubeTransparentIcon, CalculatorIcon, BeakerIcon, SparklesIcon } from "@heroicons/react/24/outline";
+import HeroSection from "../../components/ui/herosection";
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-gray-50 py-12">
+    <div className="min-h-screen bg-white py-12">
+       <HeroSection />
       {/* Sử dụng container với max-width và center */}
       <div className="max-w-7xl mx-auto px-6">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6 justify-items-center">

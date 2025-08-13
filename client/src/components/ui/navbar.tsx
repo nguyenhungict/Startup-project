@@ -16,7 +16,6 @@ export default function Navbar() {
         <nav className="hidden md:flex space-x-6 items-center">
           <Link to="/" className="text-gray-700 hover:text-blue-600">Home</Link>
           <Link to="/login" className="text-gray-700 hover:text-blue-600">Login</Link>
-          <Link to="/about" className="text-gray-700 hover:text-blue-600">About</Link>
           <button className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
             Sign Up
           </button>
