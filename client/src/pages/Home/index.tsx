@@ -1,7 +1,10 @@
 import React from "react";
-import SubjectCard from "../../components/ui/SubjectCard";
+import SubjectCard from "../../components/HomePage/SubjectCard";
 import { CubeTransparentIcon, CalculatorIcon, BeakerIcon, SparklesIcon } from "@heroicons/react/24/outline";
-import HeroSection from "../../components/ui/herosection";
+import HeroSection from "../../components/HomePage/herosection";
+import AboutUs from "../../components/HomePage/aboutUs";
+import Pricing from "../../components/HomePage/pricingSection";
+import FAQ from "../../components/HomePage/faqSection";
 
 export default function HomePage() {
   return (
@@ -44,6 +47,9 @@ export default function HomePage() {
           />
         </div>
       </div>
+      <AboutUs/>
+      <Pricing/>
+      <FAQ/>
     </div>
   );
 }
