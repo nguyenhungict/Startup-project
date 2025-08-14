@@ -1,25 +1,42 @@
 import React, { useState } from 'react';
 import { useAuthStore } from '../../stores/auth';
 
-const LoginPage: React.FC = () => {
-  const { signInWithGoogle, signInWithEmail, loading, error } = useAuthStore();
+const SignupPage: React.FC = () => {
+  const { signInWithGoogle, signUpWithEmail, loading, error } = useAuthStore();
   const [formData, setFormData] = useState({
+    fullName: '',
     email: '',
-    password: ''
+    password: '',
+    confirmPassword: ''
   });
   const [formErrors, setFormErrors] = useState<{[key: string]: string}>({});
+  const [successMessage, setSuccessMessage] = useState<string>('');
+
+  // Auto-hide success message after 5 seconds
+  React.useEffect(() => {
+    if (successMessage) {
+      const timer = setTimeout(() => {
+        setSuccessMessage('');
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [successMessage]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData((prev: any) => ({ ...prev, [name]: value }));
+    setFormData(prev => ({ ...prev, [name]: value }));
     // Clear error when user starts typing
     if (formErrors[name]) {
-      setFormErrors((prev: any) => ({ ...prev, [name]: '' }));
+      setFormErrors(prev => ({ ...prev, [name]: '' }));
     }
   };
 
   const validateForm = () => {
     const errors: {[key: string]: string} = {};
+    
+    if (!formData.fullName.trim()) {
+      errors.fullName = 'Full name is required';
+    }
     
     if (!formData.email.trim()) {
       errors.email = 'Email is required';
@@ -29,6 +46,14 @@ const LoginPage: React.FC = () => {
     
     if (!formData.password) {
       errors.password = 'Password is required';
+    } else if (formData.password.length < 6) {
+      errors.password = 'Password must be at least 6 characters';
+    }
+    
+    if (!formData.confirmPassword) {
+      errors.confirmPassword = 'Please confirm your password';
+    } else if (formData.password !== formData.confirmPassword) {
+      errors.confirmPassword = 'Passwords do not match';
     }
     
     setFormErrors(errors);
@@ -38,19 +63,41 @@ const LoginPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (validateForm()) {
-      await signInWithEmail(formData.email, formData.password);
+      setSuccessMessage('');
+      const result = await signUpWithEmail(formData.email, formData.password);
+      
+      // Check if signup was successful
+      if (result.success) {
+        setSuccessMessage('Account created successfully! Welcome aboard! 🎉');
+        // Clear form data
+        setFormData({
+          fullName: '',
+          email: '',
+          password: '',
+          confirmPassword: ''
+        });
+        setFormErrors({});
+      }
     }
   };
 
-  const handleGoogleSignIn = async () => {
+  const handleGoogleSignUp = async () => {
+    setSuccessMessage('');
     await signInWithGoogle();
   };
 
   return (
     <div className="min-h-[70vh] flex items-center justify-center px-4 py-12 bg-gray-50">
       <div className="w-full max-w-md rounded-lg bg-white p-8 shadow">
-        <h1 className="mb-2 text-center text-2xl font-semibold">Sign in to your account</h1>
-        <p className="mb-6 text-center text-sm text-gray-600">Welcome back! Please enter your details.</p>
+        <h1 className="mb-2 text-center text-2xl font-semibold">Create your account</h1>
+        <p className="mb-6 text-center text-sm text-gray-600">Join us! Please fill in your details below.</p>
+        
+        {/* Success Message */}
+        {successMessage && (
+          <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded">
+            {successMessage}
+          </div>
+        )}
         
         {/* Error Message */}
         {error && (
@@ -60,6 +107,30 @@ const LoginPage: React.FC = () => {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Full Name */}
+          <div>
+            <label htmlFor="fullName" className="block text-sm font-medium text-gray-700">
+              Full Name
+            </label>
+            <input
+              id="fullName"
+              name="fullName"
+              type="text"
+              autoComplete="name"
+              required
+              value={formData.fullName}
+              onChange={handleInputChange}
+              className={`mt-1 block w-full rounded-md border px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 ${
+                formErrors.fullName ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-indigo-500'
+              }`}
+              placeholder="John Doe"
+            />
+            {formErrors.fullName && (
+              <p className="mt-1 text-sm text-red-600">{formErrors.fullName}</p>
+            )}
+          </div>
+
+          {/* Email */}
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-700">
               Email address
@@ -81,6 +152,8 @@ const LoginPage: React.FC = () => {
               <p className="mt-1 text-sm text-red-600">{formErrors.email}</p>
             )}
           </div>
+
+          {/* Password */}
           <div>
             <label htmlFor="password" className="block text-sm font-medium text-gray-700">
               Password
@@ -89,7 +162,7 @@ const LoginPage: React.FC = () => {
               id="password"
               name="password"
               type="password"
-              autoComplete="current-password"
+              autoComplete="new-password"
               required
               value={formData.password}
               onChange={handleInputChange}
@@ -102,11 +175,36 @@ const LoginPage: React.FC = () => {
               <p className="mt-1 text-sm text-red-600">{formErrors.password}</p>
             )}
           </div>
+
+          {/* Confirm Password */}
+          <div>
+            <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
+              Confirm Password
+            </label>
+            <input
+              id="confirmPassword"
+              name="confirmPassword"
+              type="password"
+              autoComplete="new-password"
+              required
+              value={formData.confirmPassword}
+              onChange={handleInputChange}
+              className={`mt-1 block w-full rounded-md border px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 ${
+                formErrors.confirmPassword ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-indigo-500'
+              }`}
+              placeholder="••••••••"
+            />
+            {formErrors.confirmPassword && (
+              <p className="mt-1 text-sm text-red-600">{formErrors.confirmPassword}</p>
+            )}
+          </div>
+
+          {/* Submit Button */}
           <button
             type="submit"
-            className="w-full rounded-md bg-indigo-600 px-4 py-2 text-white shadow hover:bg-indigo-700"
+            className="w-full rounded-md bg-indigo-600 px-4 py-2 text-white shadow hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
           >
-            Sign In
+            Create Account
           </button>
         </form>
         
@@ -120,10 +218,10 @@ const LoginPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Google Sign In Button */}
+        {/* Google Sign Up Button */}
         <button
           type="button"
-          onClick={handleGoogleSignIn}
+          onClick={handleGoogleSignUp}
           disabled={loading}
           className="w-full flex items-center justify-center gap-3 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
@@ -149,16 +247,14 @@ const LoginPage: React.FC = () => {
               />
             </svg>
           )}
-          {loading ? 'Signing in...' : 'Sign in with Google'}
+          {loading ? 'Signing up...' : 'Sign up with Google'}
         </button>
 
+        {/* Login Link */}
         <p className="mt-4 text-center text-sm text-gray-600">
-          Forgot your password? <span className="cursor-pointer text-indigo-600 hover:underline">Reset it</span>
-        </p>
-        <p className="mt-2 text-center text-sm text-gray-600">
-          Don't have an account?{' '}
-          <a href="/signup" className="text-indigo-600 hover:underline">
-            Sign up here
+          Already have an account?{' '}
+          <a href="/login" className="text-indigo-600 hover:underline">
+            Sign in here
           </a>
         </p>
       </div>
@@ -166,4 +262,4 @@ const LoginPage: React.FC = () => {
   );
 };
 
-export default LoginPage;
+export default SignupPage;
