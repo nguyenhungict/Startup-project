@@ -5,10 +5,11 @@ import HeroSection from "../../components/HomePage/herosection";
 import AboutUs from "../../components/HomePage/aboutUs";
 import Pricing from "../../components/HomePage/pricingSection";
 import FAQ from "../../components/HomePage/faqSection";
+import Footer from "../../components/HomePage/footer";
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-white py-12">
+    <div className="min-h-screen bg-white pt-12">
        <HeroSection />
       {/* Sử dụng container với max-width và center */}
       <div className="max-w-7xl mx-auto px-6">
@@ -22,24 +23,24 @@ export default function HomePage() {
             link="/math"
           />
           <SubjectCard
-            color="bg-green-500"
-            hoverColor="group-hover:bg-green-400"
+            color="bg-amber-500"
+            hoverColor="group-hover:bg-amber-400"
             icon={<CubeTransparentIcon className="h-10 w-10 text-white" />}
             text="Physics"
             description="Discover the laws that govern the universe."
             link="/physics"
           />
           <SubjectCard
-            color="bg-yellow-500"
-            hoverColor="group-hover:bg-yellow-400"
+            color="bg-indigo-500"
+            hoverColor="group-hover:bg-indigo-400"
             icon={<BeakerIcon className="h-10 w-10 text-white" />}
             text="Chemistry"
             description="Explore experiments and chemical reactions."
             link="/chemistry"
           />
           <SubjectCard
-            color="bg-purple-500"
-            hoverColor="group-hover:bg-purple-400"
+            color="bg-teal-500"
+            hoverColor="group-hover:bg-teal-400"
             icon={<SparklesIcon className="h-10 w-10 text-white" />}
             text="Biology"
             description="Learn about life, organisms, and ecosystems."
@@ -50,6 +51,7 @@ export default function HomePage() {
       <AboutUs/>
       <Pricing/>
       <FAQ/>
+      <Footer/>
     </div>
   );
 }

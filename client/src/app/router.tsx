@@ -3,6 +3,8 @@ import AppLayout from "../layouts/AppLayout";
 import Home from "../pages/Home";
 import Login from "../pages/Login";
 import Signup from "../pages/Signup";
+import PhysicsPage from "../pages/Physics/physicPage";
+
 
 export default function Router() {
   return (
@@ -12,6 +14,7 @@ export default function Router() {
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/physics" element={<PhysicsPage />} />
         </Routes>
       </AppLayout>
     </BrowserRouter>

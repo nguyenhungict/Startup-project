@@ -14,7 +14,6 @@ export default function Navbar() {
 
         {/* Desktop Menu */}
         <nav className="hidden md:flex space-x-6 items-center">
-          <Link to="/" className="text-gray-700 hover:text-blue-600">Home</Link>
           <Link to="/login" className="text-gray-700 hover:text-blue-600">Login</Link>
           <Link to="/signup" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
             Sign Up
@@ -43,9 +42,7 @@ export default function Navbar() {
         }`}
       >
         <nav className="flex flex-col space-y-2 px-4 pb-4 bg-white">
-          <Link to="/" className="text-gray-700 hover:text-blue-600">Home</Link>
           <Link to="/login" className="text-gray-700 hover:text-blue-600">Login</Link>
-          <Link to="/about" className="text-gray-700 hover:text-blue-600">About</Link>
           <Link to="/signup" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
             Sign Up
           </Link>
