@@ -1,59 +1,77 @@
+
 import React, { useState } from "react";
+import { XMarkIcon } from "@heroicons/react/24/solid";
+
+interface Attribute {
+  name: string;
+  key: string;
+  type: "number" | "color";
+  defaultValue: number | string;
+}
 
 interface AttributePopupProps {
   objectName: string;
+  attributesConfig: Attribute[];
   onClose: () => void;
-  onSave: (attributes: { size: number; color: string }) => void;
+  onSave: (attributes: Record<string, number | string>) => void;
 }
 
-const AttributePopup: React.FC<AttributePopupProps> = ({ objectName, onClose, onSave }) => {
-  const [size, setSize] = useState(10);
-  const [color, setColor] = useState("#000000");
+const AttributePopup: React.FC<AttributePopupProps> = ({ objectName, attributesConfig, onClose, onSave }) => {
+  const initialAttributes = attributesConfig.reduce((acc, attr) => {
+    acc[attr.key] = attr.defaultValue;
+    return acc;
+  }, {} as Record<string, number | string>);
+
+  const [attributes, setAttributes] = useState(initialAttributes);
+
+  const handleInputChange = (key: string, value: string | number) => {
+    setAttributes((prev) => ({ ...prev, [key]: value }));
+  };
 
   const handleSave = () => {
-    onSave({ size, color });
+    onSave(attributes);
   };
 
   return (
-    <div className="fixed top-4 right-4 bg-white p-4 rounded-lg shadow-lg w-64 z-10">
-      <button
-        onClick={onClose}
-        className="absolute top-2 right-2 text-gray-500 hover:text-gray-700 text-xl"
-      >
-        ×
-      </button>
-      <h2 className="text-lg font-semibold text-gray-900 mb-4">Edit Attributes for {objectName}</h2>
-      <div className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Size</label>
-          <input
-            type="number"
-            value={size}
-            onChange={(e) => setSize(Number(e.target.value))}
-            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
-            min="1"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Color</label>
-          <input
-            type="color"
-            value={color}
-            onChange={(e) => setColor(e.target.value)}
-            className="mt-1 block w-full h-10 border-gray-300 rounded-md shadow-sm"
-          />
-        </div>
+    <div className="fixed top-0 right-0 h-full w-80 bg-white shadow-2xl p-6 z-50 overflow-y-auto">
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-lg font-bold text-gray-800">{objectName} Attributes</h3>
+        <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+          <XMarkIcon className="h-6 w-6" />
+        </button>
       </div>
-      <div className="mt-6 flex justify-end space-x-4">
+      <div className="space-y-4">
+        {attributesConfig.map((attr) => (
+          <div key={attr.key} className="grid grid-cols-2 gap-2 items-center">
+            <label className="text-sm font-medium text-gray-700">{attr.name}</label>
+            {attr.type === "number" ? (
+              <input
+                type="number"
+                value={attributes[attr.key] as number}
+                onChange={(e) => handleInputChange(attr.key, Number(e.target.value))}
+                className="border border-gray-300 rounded p-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            ) : (
+              <input
+                type="color"
+                value={attributes[attr.key] as string}
+                onChange={(e) => handleInputChange(attr.key, e.target.value)}
+                className="border border-gray-300 rounded p-1 h-8 w-full"
+              />
+            )}
+          </div>
+        ))}
+      </div>
+      <div className="mt-6 flex justify-end space-x-2">
         <button
           onClick={onClose}
-          className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
+          className="bg-gray-500 text-white px-3 py-1 rounded hover:bg-gray-600 text-sm"
         >
           Cancel
         </button>
         <button
           onClick={handleSave}
-          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+          className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 text-sm"
         >
           Save
         </button>
