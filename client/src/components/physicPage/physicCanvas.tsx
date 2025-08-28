@@ -1,314 +1,287 @@
-import React, { useRef, useEffect, useState } from "react";
+
+// src/components/physicPage/PhysicsCanvas.tsx
+import React, { useEffect, useRef, useState } from "react";
 import Konva from "konva";
-import * as Matter from "matter-js";
+import type { PhysicsPageLogic } from "../../hooks/physicsPage/type";
 
 interface CanvasProps {
-  selectedObject: string | null;
-  onDrop: (object: string) => void;
-  onAttributeChange: (attributes: { mass: number; initialVelocity: number; force: number; friction: number; size: number; color: string }) => void;
   isRunning: boolean;
-  onSimulationStateChange: (isRunning: boolean) => void;
   resetTrigger: number;
+  selectedObjects: { id: string; type: string }[];
+  objectAttributes: Record<string, Record<string, any>>;
+  onObjectSelect: (item: string) => void;
 }
 
-const Canvas: React.FC<CanvasProps> = ({ 
-  selectedObject, 
-  onDrop, 
-  onAttributeChange, 
-  isRunning, 
-  onSimulationStateChange, 
-  resetTrigger 
+const Canvas: React.FC<CanvasProps> = ({
+  isRunning,
+  resetTrigger,
+  selectedObjects,
+  objectAttributes,
+  onObjectSelect,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Konva.Stage | null>(null);
   const layerRef = useRef<Konva.Layer | null>(null);
-  const engineRef = useRef<Matter.Engine | null>(null);
-  const runnerRef = useRef<Matter.Runner | null>(null);
-  const bodies = useRef<Map<string, { body: Matter.Body; shape: Konva.Shape }>>(new Map());
-  const [localIsRunning, setLocalIsRunning] = useState(false);
+  const [objects, setObjects] = useState<
+    {
+      id: string;
+      type?: string;
+      x: number;
+      y: number;
+      angle: number;
+      label: string;
+      size?: number;
+      color?: string;
+      length?: number;
+      velocityX?: number;
+      velocityY?: number;
+      startX?: number;
+      startY?: number;
+      endX?: number;
+      endY?: number;
+    }[]
+  >([]);
+  const animationRef = useRef<number | null>(null);
 
-  // Sync with parent component's isRunning state
   useEffect(() => {
-    setLocalIsRunning(isRunning);
-  }, [isRunning]);
-
-  // Handle reset trigger from parent
-  useEffect(() => {
-    if (resetTrigger > 0) {
-      handleReset();
-    }
-  }, [resetTrigger]);
-
-  // Handle simulation control from parent
-  useEffect(() => {
-    if (!engineRef.current || !runnerRef.current) return;
-
-    if (isRunning && !localIsRunning) {
-      Matter.Runner.run(runnerRef.current, engineRef.current);
-      setLocalIsRunning(true);
-    } else if (!isRunning && localIsRunning) {
-      Matter.Runner.stop(runnerRef.current);
-      setLocalIsRunning(false);
-    }
-  }, [isRunning, localIsRunning]);
-
-  const initializeCanvas = () => {
     if (containerRef.current && !stageRef.current) {
-      const width = containerRef.current.offsetWidth;
-      const height = containerRef.current.offsetHeight;
-
-      const stage = new Konva.Stage({
+      stageRef.current = new Konva.Stage({
         container: containerRef.current,
-        width: width,
-        height: height,
+        width: containerRef.current.offsetWidth,
+        height: containerRef.current.offsetHeight,
       });
-      stageRef.current = stage;
-
-      const layer = new Konva.Layer();
-      layerRef.current = layer;
-      stage.add(layer);
-
-      const engine = Matter.Engine.create();
-      engine.gravity.y = 1;
-      engineRef.current = engine;
-      const runner = Matter.Runner.create();
-      runnerRef.current = runner;
-
-      Matter.Events.on(engine, "afterUpdate", () => {
-        bodies.current.forEach(({ body, shape }) => {
-          shape.position({
-            x: body.position.x,
-            y: body.position.y,
-          });
-          shape.rotation(body.angle * (180 / Math.PI));
-        });
-        layer.batchDraw();
-      });
-
-      Matter.Events.on(engine, "collisionStart", (event) => {
-        const pairs = event.pairs;
-        pairs.forEach(pair => {
-          console.log("Collision between", pair.bodyA.label, "and", pair.bodyB.label);
-        });
-      });
-    }
-  };
-
-  const handleResize = () => {
-    if (containerRef.current && stageRef.current) {
-      // Small delay to ensure DOM has updated after layout changes
-      setTimeout(() => {
-        const width = containerRef.current!.offsetWidth;
-        const height = containerRef.current!.offsetHeight;
-        
-        stageRef.current!.size({
-          width: width,
-          height: height,
-        });
-        stageRef.current!.draw();
-      }, 50);
-    }
-  };
-
-  useEffect(() => {
-    // Initialize canvas
-    initializeCanvas();
-
-    // Add resize listener
-    const resizeObserver = new ResizeObserver(handleResize);
-    if (containerRef.current) {
-      resizeObserver.observe(containerRef.current);
+      layerRef.current = new Konva.Layer();
+      stageRef.current.add(layerRef.current);
     }
 
-    // Also listen for window resize as backup
-    window.addEventListener('resize', handleResize);
+    const handleDrop = (e: DragEvent) => {
+      e.preventDefault();
+      const item = e.dataTransfer?.getData("text/plain");
+      if (item) onObjectSelect(item);
+    };
+
+    containerRef.current?.addEventListener("drop", handleDrop);
+    containerRef.current?.addEventListener("dragover", (e) => e.preventDefault());
 
     return () => {
-      if (runnerRef.current && engineRef.current) {
-        Matter.Runner.stop(runnerRef.current);
-        Matter.Engine.clear(engineRef.current);
-      }
       if (stageRef.current) {
         stageRef.current.destroy();
+        stageRef.current = null;
       }
-      resizeObserver.disconnect();
-      window.removeEventListener('resize', handleResize);
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+      containerRef.current?.removeEventListener("drop", handleDrop);
+      containerRef.current?.removeEventListener("dragover", (e) => e.preventDefault());
     };
   }, []);
 
   useEffect(() => {
-    if (selectedObject && layerRef.current && engineRef.current && !bodies.current.has(selectedObject)) {
-      const layer = layerRef.current;
-      const world = engineRef.current.world;
+    if (resetTrigger > 0 && layerRef.current) {
+      setObjects([]);
+      layerRef.current.destroyChildren();
+      layerRef.current.draw();
+    }
+  }, [resetTrigger]);
 
-      const baseObject = selectedObject.split(" (")[0];
-      const attributesMatch = selectedObject.match(/Mass: (\d+), Velocity: (\d+), Force: (\d+), Friction: (\d+\.?\d*), Size: (\d+), Color: (#[0-9A-Fa-f]{6})/);
-      const attributes = attributesMatch ? {
-        mass: Number(attributesMatch[1]),
-        initialVelocity: Number(attributesMatch[2]),
-        force: Number(attributesMatch[3]),
-        friction: Number(attributesMatch[4]),
-        size: Number(attributesMatch[5]),
-        color: attributesMatch[6],
-      } : { mass: 1, initialVelocity: 0, force: 0, friction: 0.1, size: 50, color: "#000000" };
+  useEffect(() => {
+    if (!layerRef.current) return;
+    // Map selectedObjects and objectAttributes to canvas objects
+    const updatedObjects = selectedObjects.map((obj) => {
+      const attrs = objectAttributes[obj.id] || {};
+      return {
+        id: obj.id,
+        type: obj.type,
+        x: attrs.position?.x ?? 0,
+        y: attrs.position?.y ?? 0,
+        angle: attrs.angle ?? 0,
+        label: obj.type,
+        size: attrs.size ?? 20,
+        color: attrs.color ?? "blue",
+        length: attrs.length,
+        velocityX: attrs.velocityX ?? 0,
+        velocityY: attrs.velocityY ?? 0,
+        startX: attrs.startX,
+        startY: attrs.startY,
+        endX: attrs.endX,
+        endY: attrs.endY,
+      };
+    });
+    setObjects(updatedObjects);
+  }, [selectedObjects, objectAttributes]);
 
-      let body: Matter.Body;
+  useEffect(() => {
+    if (!layerRef.current) return;
+
+    const update = () => {
+      if (!isRunning) return;
+      // In a real scenario, KinematicSimulationManager would update positions
+      // For now, rely on objectAttributes updates via useEffect above
+      if (isRunning) {
+        animationRef.current = requestAnimationFrame(update);
+      }
+    };
+
+    if (isRunning) {
+      animationRef.current = requestAnimationFrame(update);
+    } else if (animationRef.current) {
+      cancelAnimationFrame(animationRef.current);
+      animationRef.current = null;
+    }
+
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+        animationRef.current = null;
+      }
+    };
+  }, [isRunning]);
+
+  useEffect(() => {
+    if (!layerRef.current) return;
+    const layer = layerRef.current;
+    layer.destroyChildren();
+
+    objects.forEach((obj) => {
       let shape: Konva.Shape;
-      const id = `${selectedObject}-${Date.now()}`;
-      const x = stageRef.current!.width() / 2;
-      const y = stageRef.current!.height() / 2;
+      const size = obj.size ?? 20;
+      const color = obj.color ?? "blue";
 
-      switch (baseObject.toLowerCase()) {
-        case "sphere":
-        case "ball":
-          body = Matter.Bodies.circle(x, y, attributes.size / 2, {
-            mass: attributes.mass,
-            friction: attributes.friction,
-            restitution: 0.5,
-            label: baseObject,
-          });
+      if (obj.type === "surface" && obj.startX !== undefined && obj.startY !== undefined && 
+          obj.endX !== undefined && obj.endY !== undefined) {
+        shape = new Konva.Line({
+          points: [obj.startX, obj.startY, obj.endX, obj.endY],
+          stroke: color,
+          strokeWidth: 5,
+          lineCap: "round",
+        });
+        layer.add(shape);
+        return;
+      }
+
+      const objectType = obj.label?.toLowerCase() || obj.type?.toLowerCase() || "point mass";
+      
+      switch (objectType) {
+        case "point mass":
+        case "moving object":
           shape = new Konva.Circle({
-            x,
-            y,
-            radius: attributes.size / 2,
-            fill: attributes.color,
-            draggable: true,
+            x: obj.x,
+            y: obj.y,
+            radius: size / 2,
+            fill: color,
+            stroke: "black",
+            strokeWidth: 1,
+            rotation: obj.angle,
           });
           break;
         case "box":
-          body = Matter.Bodies.rectangle(x, y, attributes.size, attributes.size, {
-            mass: attributes.mass,
-            friction: attributes.friction,
-            restitution: 0.5,
-            label: baseObject,
-          });
           shape = new Konva.Rect({
-            x,
-            y,
-            width: attributes.size,
-            height: attributes.size,
-            fill: attributes.color,
-            draggable: true,
+            x: obj.x,
+            y: obj.y,
+            width: size,
+            height: size,
+            fill: color,
+            stroke: "black",
+            strokeWidth: 1,
+            rotation: obj.angle,
+            offset: { x: size / 2, y: size / 2 },
+          });
+          break;
+        case "car":
+          shape = new Konva.Rect({
+            x: obj.x,
+            y: obj.y,
+            width: size,
+            height: size / 2,
+            fill: color,
+            stroke: "black",
+            strokeWidth: 1,
+            rotation: obj.angle,
+            offset: { x: size / 2, y: size / 4 },
           });
           break;
         case "ramp":
-        case "inclined plane":
-          body = Matter.Bodies.rectangle(x, y, attributes.size * 2, attributes.size / 2, {
-            isStatic: true,
-            angle: Math.PI / 6,
-            friction: attributes.friction,
-            label: baseObject,
-          });
           shape = new Konva.Rect({
-            x,
-            y,
-            width: attributes.size * 2,
-            height: attributes.size / 2,
-            fill: attributes.color,
-            rotation: 30,
-            draggable: false,
+            x: obj.x,
+            y: obj.y,
+            width: size,
+            height: 20,
+            fill: color,
+            stroke: "black",
+            strokeWidth: 1,
+            rotation: obj.angle,
+            offset: { x: size / 2, y: 10 },
           });
           break;
-        case "spring":
-          const anchor = Matter.Bodies.circle(x - 50, y, 10, { isStatic: true, label: "anchor" });
-          body = Matter.Bodies.circle(x + 50, y, attributes.size / 2, {
-            mass: attributes.mass,
-            friction: attributes.friction,
-            restitution: 0.5,
-            label: baseObject,
-          });
-          const constraint = Matter.Constraint.create({
-            bodyA: anchor,
-            bodyB: body,
-            length: 50,
-            stiffness: 0.1,
-          });
-          Matter.World.add(world, [anchor, body, constraint]);
+        case "circle path":
           shape = new Konva.Circle({
-            x: x + 50,
-            y,
-            radius: attributes.size / 2,
-            fill: attributes.color,
-            draggable: true,
+            x: obj.x,
+            y: obj.y,
+            radius: size / 2,
+            fill: color,
+            stroke: "black",
+            strokeWidth: 1,
+            rotation: obj.angle,
           });
-          const springLine = new Konva.Line({
-            points: [x - 50, y, x + 50, y],
-            stroke: attributes.color,
-            strokeWidth: 2,
+          const path = new Konva.Circle({
+            x: obj.x - (obj.length ?? 100) * Math.cos((obj.angle * Math.PI) / 180),
+            y: obj.y - (obj.length ?? 100) * Math.sin((obj.angle * Math.PI) / 180),
+            radius: obj.length ?? 100,
+            stroke: "black",
+            strokeWidth: 1,
+            dash: [5, 5],
           });
-          layer.add(springLine);
+          layer.add(path);
           break;
         default:
-          body = Matter.Bodies.rectangle(x, y, attributes.size, attributes.size, {
-            mass: attributes.mass,
-            friction: attributes.friction,
-            restitution: 0.5,
-            label: baseObject,
-          });
-          shape = new Konva.Rect({
-            x,
-            y,
-            width: attributes.size,
-            height: attributes.size,
-            fill: attributes.color,
-            draggable: true,
+          shape = new Konva.Circle({
+            x: obj.x,
+            y: obj.y,
+            radius: size / 2,
+            fill: color,
+            stroke: "black",
+            strokeWidth: 1,
+            rotation: obj.angle,
           });
       }
-
-      Matter.Body.setVelocity(body, { x: attributes.initialVelocity, y: 0 });
-      if (attributes.force > 0) {
-        Matter.Body.applyForce(body, body.position, { x: attributes.force, y: 0 });
-      }
-
-      Matter.World.add(world, body);
       layer.add(shape);
-      bodies.current.set(id, { body, shape });
 
-      layer.draw();
-    }
-  }, [selectedObject]);
+      const velocityX = obj.velocityX ?? 0;
+      const velocityY = obj.velocityY ?? 0;
+      const velocityMagnitude = Math.sqrt(velocityX * velocityX + velocityY * velocityY);
+      
+      if (velocityMagnitude > 0.1) {
+        const scale = Math.min(50, 10 + velocityMagnitude * 5);
+        const normalizedVelX = velocityX / velocityMagnitude;
+        const normalizedVelY = velocityY / velocityMagnitude;
+        
+        const arrow = new Konva.Arrow({
+          x: obj.x,
+          y: obj.y,
+          points: [0, 0, normalizedVelX * scale, normalizedVelY * scale],
+          pointerLength: 8,
+          pointerWidth: 6,
+          fill: "red",
+          stroke: "red",
+          strokeWidth: 2,
+        });
+        layer.add(arrow);
+        
+        const velText = new Konva.Text({
+          x: obj.x + normalizedVelX * scale + 5,
+          y: obj.y + normalizedVelY * scale - 5,
+          text: `v=${velocityMagnitude.toFixed(1)}`,
+          fontSize: 12,
+          fill: "red",
+        });
+        layer.add(velText);
+      }
+    });
 
-  const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    const object = event.dataTransfer.getData("text/plain");
-    onDrop(object);
-  };
+    layer.draw();
+  }, [objects]);
 
-  const handleReset = () => {
-    if (!engineRef.current || !layerRef.current) return;
-    
-    // Stop the simulation
-    if (runnerRef.current) {
-      Matter.Runner.stop(runnerRef.current);
-    }
-    
-    // Clear all bodies from physics world
-    Matter.World.clear(engineRef.current.world, false);
-    
-    // Clear all shapes from Konva layer
-    layerRef.current.destroyChildren();
-    layerRef.current.draw();
-    
-    // Clear the bodies map
-    bodies.current.clear();
-    
-    // Reset running state
-    setLocalIsRunning(false);
-    onSimulationStateChange(false);
-  };
-
-  const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-  };
-
-  return (
-    <div
-      ref={containerRef}
-      className="flex-1 h-[calc(60vh-3rem)] border border-gray-300 bg-white rounded-md"
-      onDrop={handleDrop}
-      onDragOver={handleDragOver}
-    />
-  );
+  return <div ref={containerRef} className="flex-1 h-[calc(60vh-3rem)] bg-white border" />;
 };
 
 export default Canvas;
