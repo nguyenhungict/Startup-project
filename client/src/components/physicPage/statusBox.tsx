@@ -1,6 +1,5 @@
 // src/components/physicPage/StatusBox.tsx
 import React from "react";
-import type { PhysicsPageLogic } from "../../hooks/physicsPage/type";
 
 interface StatusBoxProps {
   selectedObjects: { id: string; type: string }[];

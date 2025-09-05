@@ -1,4 +1,4 @@
-import type { PhysicsObjectConfig } from "../Model/physic/Mechanics/Dynamics/PhysicEngine";
+
 
 export interface Attribute {
   name: string;

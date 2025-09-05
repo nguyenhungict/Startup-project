@@ -54,7 +54,7 @@ export const getCurrentSimulationData = (
 export const useSimulation = (): PhysicsPageLogic & { getCurrentSimulation: () => any } => {
   const manager = new KinematicSimulationManager();
   const { selectedTopic, handleTopicSelect } = useTopicSelection();
-  const { selectedSubtopic, handleSubtopicSelect, availableSubtopics } = useSubtopicSelection(selectedTopic);
+  const { selectedSubtopic, handleSubtopicSelect } = useSubtopicSelection(selectedTopic);
   const {
     selectedObjects,
     selectedSupportTools,
@@ -68,12 +68,6 @@ export const useSimulation = (): PhysicsPageLogic & { getCurrentSimulation: () =
   } = useObjectSelection();
   const [objectAttributes, setObjectAttributes] = useState<Record<string, any>>({});
   const [supportToolAttributes, setSupportToolAttributes] = useState<Record<string, any>>({});
-  const { formAttributes, handleAttributeChange, handlePopupSave } = useAttributeForm(
-    popupItem,
-    setObjectAttributes,
-    setSupportToolAttributes,
-    handlePopupClose
-  );
   const {
     isSimulationRunning,
     canvasResetTrigger,
@@ -82,6 +76,23 @@ export const useSimulation = (): PhysicsPageLogic & { getCurrentSimulation: () =
     handleResetSimulation: originalHandleResetSimulation,
     setIsSimulationRunning,
   } = useSimulationControl();
+  const {
+    formAttributes,
+    handleAttributeChange,
+    handlePopupSave: originalHandlePopupSave,
+  } = useAttributeForm(
+  popupItem,
+  objectAttributes,
+  supportToolAttributes,
+  setObjectAttributes,
+  setSupportToolAttributes,
+  handlePopupClose
+);;
+  const [showCoordinates, setShowCoordinates] = useState<boolean>(true);
+
+  const toggleCoordinates = () => {
+    setShowCoordinates((prev) => !prev);
+  };
 
   // Sync manager with topic/subtopic changes
   useEffect(() => {
@@ -104,6 +115,65 @@ export const useSimulation = (): PhysicsPageLogic & { getCurrentSimulation: () =
     });
   }, [selectedObjects, selectedSupportTools, objectAttributes, supportToolAttributes]);
 
+  // Update React state with simulation state during running
+  useEffect(() => {
+    let animationFrame: number | null = null;
+
+    const updateAttributesFromSimulation = () => {
+      if (!isSimulationRunning) return;
+
+      const state = manager.getState();
+
+      setObjectAttributes((prev) => {
+        const newAttrs = { ...prev };
+        state.forEach((item: any) => {
+          if (newAttrs[item.id] && item.type !== "surface") {
+            newAttrs[item.id] = {
+              ...newAttrs[item.id],
+              position: { x: item.x, y: item.y },
+              velocityX: item.velocityX,
+              velocityY: item.velocityY,
+              angle: item.angle,
+              size: item.size,
+              color: item.color,
+            };
+          }
+        });
+        return newAttrs;
+      });
+
+      setSupportToolAttributes((prev) => {
+        const newAttrs = { ...prev };
+        state.forEach((item: any) => {
+          if (newAttrs[item.id] && item.type === "surface") {
+            newAttrs[item.id] = {
+              ...newAttrs[item.id],
+              startX: item.startX,
+              startY: item.startY,
+              endX: item.endX,
+              endY: item.endY,
+              angle: item.angle,
+              color: item.color,
+            };
+          }
+        });
+        return newAttrs;
+      });
+
+      animationFrame = requestAnimationFrame(updateAttributesFromSimulation);
+    };
+
+    if (isSimulationRunning) {
+      animationFrame = requestAnimationFrame(updateAttributesFromSimulation);
+    }
+
+    return () => {
+      if (animationFrame) {
+        cancelAnimationFrame(animationFrame);
+      }
+    };
+  }, [isSimulationRunning, manager]);
+
   const wrappedHandleTopicSelect = (topic: string) => {
     handleTopicSelect(topic);
     setSelectedObjects([]);
@@ -122,7 +192,7 @@ export const useSimulation = (): PhysicsPageLogic & { getCurrentSimulation: () =
 
   const wrappedHandleObjectSelect = (object: string) => {
     handleObjectSelect(object);
-    const id = selectedObjects[selectedObjects.length - 1]?.id; // Get the newly added object
+    const id = selectedObjects[selectedObjects.length - 1]?.id;
     if (id) {
       manager.addObjectFromType(object);
     }
@@ -132,16 +202,17 @@ export const useSimulation = (): PhysicsPageLogic & { getCurrentSimulation: () =
     handleSupportToolSelect(tool);
     const id = selectedSupportTools[selectedSupportTools.length - 1]?.id;
     if (id) {
-      manager.addObjectFromType(tool); // Assuming support tools are added similarly
+      manager.addObjectFromType(tool);
     }
   };
 
   const wrappedHandlePopupSave = (attributes: Record<string, any>) => {
-    handlePopupSave();
-    if (popupItem) {
-      manager.updateItem(popupItem.id, popupItem.type, attributes, popupItem.isSupportTool);
-    }
-  };
+  originalHandlePopupSave(attributes); // truyền attributes vào
+  if (popupItem) {
+    manager.updateItem(popupItem.id, popupItem.type, attributes, popupItem.isSupportTool);
+  }
+};
+
 
   const wrappedHandleRunSimulation = () => {
     originalHandleRunSimulation();
@@ -187,6 +258,8 @@ export const useSimulation = (): PhysicsPageLogic & { getCurrentSimulation: () =
     getAttributesConfig: (item: string | null, isSupportTool: boolean) =>
       getAttributesConfig(item, isSupportTool),
     setIsSimulationRunning,
+    showCoordinates,
+    toggleCoordinates,
     getCurrentSimulation,
   };
 };

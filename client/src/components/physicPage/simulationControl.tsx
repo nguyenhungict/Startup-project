@@ -1,12 +1,13 @@
-
 import React from "react";
-import { PlayIcon, PauseIcon, ArrowPathIcon } from "@heroicons/react/24/solid";
+import { PlayIcon, PauseIcon, ArrowPathIcon, EyeIcon, EyeSlashIcon } from "@heroicons/react/24/solid";
 
 interface SimulationControlsProps {
   isRunning: boolean;
   onRun: () => void;
   onStop: () => void;
   onReset: () => void;
+  showCoordinates: boolean; // New
+  onToggleCoordinates: () => void; // New
 }
 
 const SimulationControls: React.FC<SimulationControlsProps> = ({
@@ -14,6 +15,8 @@ const SimulationControls: React.FC<SimulationControlsProps> = ({
   onRun,
   onStop,
   onReset,
+  showCoordinates, // New
+  onToggleCoordinates, // New
 }) => {
   return (
     <div className="bg-white border border-gray-300 px-4 py-3 flex flex-wrap justify-center gap-4">
@@ -49,6 +52,18 @@ const SimulationControls: React.FC<SimulationControlsProps> = ({
         className="w-12 h-12 flex items-center justify-center bg-blue-500 hover:bg-blue-600 rounded-full shadow-lg hover:cursor-pointer hover:shadow-xl hover:scale-105 transition-all text-white"
       >
         <ArrowPathIcon className="h-6 w-6 text-current" />
+      </div>
+
+      {/* Toggle Coordinates Button */}
+      <div
+        onClick={onToggleCoordinates}
+        className="w-12 h-12 flex items-center justify-center bg-purple-500 hover:bg-purple-600 rounded-full shadow-lg hover:cursor-pointer hover:shadow-xl hover:scale-105 transition-all text-white"
+      >
+        {showCoordinates ? (
+          <EyeIcon className="h-6 w-6 text-current" />
+        ) : (
+          <EyeSlashIcon className="h-6 w-6 text-current" />
+        )}
       </div>
     </div>
   );

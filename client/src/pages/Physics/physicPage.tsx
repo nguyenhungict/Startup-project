@@ -1,4 +1,3 @@
-
 // src/pages/Physics/physicPage.tsx
 import React from "react";
 import { ArrowLeftIcon } from "@heroicons/react/24/solid";
@@ -30,12 +29,13 @@ const PhysicPage: React.FC = () => {
     handleSupportToolSelect,
     handlePopupClose,
     handlePopupSave,
-    handleAttributeChange,
     handleRunSimulation,
     handleStopSimulation,
     handleResetSimulation,
     getAttributesConfig,
     getCurrentSimulation,
+    showCoordinates,
+    toggleCoordinates,
   } = useSimulation();
 
   return (
@@ -105,21 +105,22 @@ const PhysicPage: React.FC = () => {
               resetTrigger={canvasResetTrigger}
               selectedObjects={selectedObjects}
               objectAttributes={objectAttributes}
-              onObjectSelect={handleObjectSelect} 
-                         />
-           
-              <SimulationControls
-                isRunning={isSimulationRunning}
-                onRun={handleRunSimulation}
-                onStop={handleStopSimulation}
-                onReset={handleResetSimulation}
-              />
-              <StatusBox
-                selectedObjects={selectedObjects}
-                selectedSupportTools={selectedSupportTools}
-                objectAttributes={objectAttributes}
-              />
-            
+              onObjectSelect={handleObjectSelect}
+              showCoordinates={showCoordinates}
+            />
+            <SimulationControls
+              isRunning={isSimulationRunning}
+              onRun={handleRunSimulation}
+              onStop={handleStopSimulation}
+              onReset={handleResetSimulation}
+              showCoordinates={showCoordinates}
+              onToggleCoordinates={toggleCoordinates}
+            />
+            <StatusBox
+              selectedObjects={selectedObjects}
+              selectedSupportTools={selectedSupportTools}
+              objectAttributes={objectAttributes}
+            />
           </div>
         </main>
       </div>
@@ -132,7 +133,6 @@ const PhysicPage: React.FC = () => {
               ? supportToolAttributes[popupItem.id] || {}
               : objectAttributes[popupItem.id] || {}
           }
-          onChange={handleAttributeChange}
           onClose={handlePopupClose}
           onSave={handlePopupSave}
         />

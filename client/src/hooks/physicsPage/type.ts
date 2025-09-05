@@ -1,4 +1,3 @@
-import type { PhysicsObjectConfig, ForceConfig } from "../../Model/physic/Mechanics/Dynamics/PhysicEngine";
 import type { Dispatch, SetStateAction } from "react";
 import type { PhysicsData } from "../../data/physicsData";
 import type { Attribute } from "../../data/physicConfig";
@@ -23,10 +22,12 @@ export interface PhysicsPageLogic {
   
   handlePopupClose: () => void;
   handlePopupSave: (attributes: Record<string, number | string | boolean | { x: number; y: number }>) => void;
-  handleAttributeChange: (key: string, value: number | string | boolean | { x: number; y: number }) => void;
+  handleAttributeChange: (key: string, value: number | string | boolean | { x: string | number; y: string | number }) => void;
   handleRunSimulation: () => void;
   handleStopSimulation: () => void;
   handleResetSimulation: () => void;
   getAttributesConfig: (item: string | null, isForce: boolean) => Attribute[];
   setIsSimulationRunning: Dispatch<SetStateAction<boolean>>;
+  showCoordinates: boolean; // New
+  toggleCoordinates: () => void; // New
 }
