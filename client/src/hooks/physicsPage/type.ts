@@ -2,32 +2,49 @@ import type { Dispatch, SetStateAction } from "react";
 import type { PhysicsData } from "../../data/physicsData";
 import type { Attribute } from "../../data/physicConfig";
 
+export type ToolKind = "object" | "globalTool" | "objectTool";
+export type AttributeValue = number | string | boolean | { x: number; y: number };
+export type AttributeMap = Record<string, AttributeValue>;
+
 export interface PhysicsPageLogic {
   selectedTopic: string | null;
   selectedSubtopic: string | null;
+
   selectedObjects: { id: string; type: string }[];
-  selectedSupportTools: { id: string; type: string }[];
+  selectedGlobalTools: { id: string; type: string }[];
+  selectedObjectTools: { id: string; type: string; targetObjectId?: string }[];
+
   showPopup: boolean;
-  popupItem: { id: string; type: string; isSupportTool: boolean } | null;
+  popupItem: { id: string; type: string; kind: ToolKind; targetObjectId?: string } | null;
+
   isSimulationRunning: boolean;
   canvasResetTrigger: number;
+
   physicsData: PhysicsData;
-  objectAttributes: Record<string, Record<string, number | string | boolean | { x: number; y: number }>>;
-  supportToolAttributes: Record<string, Record<string, number | string | boolean | { x: number; y: number }>>;
-  
+  objectAttributes: Record<string, AttributeMap>;
+  globalToolAttributes: Record<string, AttributeMap>;
+  objectToolAttributes: Record<string, AttributeMap>;
+
   handleTopicSelect: (topic: string) => void;
   handleSubtopicSelect: (subtopic: string | null) => void;
   handleObjectSelect: (object: string) => void;
-  handleSupportToolSelect: (supportTool: string) => void;
-  
+  handleGlobalToolSelect: (tool: string) => void;
+  handleObjectToolSelect: (tool: string, targetObjectId?: string) => void;
+
   handlePopupClose: () => void;
-  handlePopupSave: (attributes: Record<string, number | string | boolean | { x: number; y: number }>) => void;
-  handleAttributeChange: (key: string, value: number | string | boolean | { x: string | number; y: string | number }) => void;
+  handlePopupSave: (attributes: AttributeMap) => void;
+  handleAttributeChange: (key: string, value: AttributeValue | { x: string | number; y: string | number }) => void;
+
   handleRunSimulation: () => void;
   handleStopSimulation: () => void;
   handleResetSimulation: () => void;
-  getAttributesConfig: (item: string | null, isForce: boolean) => Attribute[];
+
+  getAttributesConfig: (item: string | null, kind: ToolKind) => Attribute[];
   setIsSimulationRunning: Dispatch<SetStateAction<boolean>>;
-  showCoordinates: boolean; // New
-  toggleCoordinates: () => void; // New
+  showCoordinates: boolean;
+  toggleCoordinates: () => void;
+  getCurrentSimulation: () => any;
+
+  gravity: { enabled: boolean; magnitude: number; direction: number };
+  updateGravity: (newValues: Partial<{ enabled: boolean; magnitude: number; direction: number }>) => void;
 }

@@ -24,6 +24,7 @@ const StatusBox: React.FC<StatusBoxProps> = ({
                 <>
                   <p>Position: ({(objectAttributes[obj.id].position?.x ?? 0).toFixed(1)}, {(objectAttributes[obj.id].position?.y ?? 0).toFixed(1)})</p>
                   <p>Velocity: {(objectAttributes[obj.id].velocityX ?? 0).toFixed(1)}, {(objectAttributes[obj.id].velocityY ?? 0).toFixed(1)}</p>
+                  <p>Acceleration: {(objectAttributes[obj.id].accelerationX ?? 0).toFixed(1)}, {(objectAttributes[obj.id].accelerationY ?? 0).toFixed(1)}</p> {/* Added */}
                 </>
               )}
             </div>

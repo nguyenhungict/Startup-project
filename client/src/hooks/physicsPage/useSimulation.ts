@@ -1,6 +1,5 @@
-
 // src/hooks/physicsPage/useSimulation.ts
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useTopicSelection } from "./useTopicSelection";
 import { useSubtopicSelection } from "./useSubtopicSelection";
 import { useObjectSelection } from "./useObjectsSelection";
@@ -8,8 +7,14 @@ import { useAttributeForm } from "./useAttributeForm";
 import { useSimulationControl } from "./useSimulationControl";
 import { getAttributesConfig } from "../../data/physicConfig";
 import { physicsData, type PhysicsData } from "../../data/physicsData";
-import { KinematicSimulationManager } from "../../Model/physic/Mechanics/Kinematics/kinematicSimulationManaGer";
-import type { PhysicsPageLogic } from "./type";
+import { KinematicSimulationManager } from "../../Model/physic/Topic/Mechanics/Kinematics/kinematicSimulationManaGer";
+import type { PhysicsPageLogic,ToolKind } from "./type";
+
+export type SupportTool = {
+  id: string;
+  type: string;
+  targetObjectId?: string;
+};
 
 export const getCurrentSimulationData = (
   physicsData: PhysicsData,
@@ -18,56 +23,80 @@ export const getCurrentSimulationData = (
 ) => {
   const defaultSimulation = {
     objects: [],
-    supportTools: [],
+    globalTools: [],
+    objectTools: [],
     subtopics: [],
   };
 
-  if (!selectedTopic) {
-    return defaultSimulation;
-  }
+  if (!selectedTopic) return defaultSimulation;
 
   const topicData = physicsData[selectedTopic];
-  if (!topicData) {
-    return defaultSimulation;
-  }
+  if (!topicData) return defaultSimulation;
 
   if (!selectedSubtopic) {
     return {
       objects: [],
-      supportTools: [],
+      globalTools: ["Gravity"],
+      objectTools: [],
       subtopics: Object.keys(topicData),
     };
   }
 
   const subtopicData = topicData[selectedSubtopic];
-  if (!subtopicData) {
-    return defaultSimulation;
-  }
+  if (!subtopicData) return defaultSimulation;
 
   return {
     objects: subtopicData.objects || [],
-    supportTools: subtopicData.supportTools || [],
+    globalTools: subtopicData.globalTools || [],
+    objectTools: subtopicData.objectTools || [],
     subtopics: [],
   };
 };
 
-export const useSimulation = (): PhysicsPageLogic & { getCurrentSimulation: () => any } => {
-  const manager = new KinematicSimulationManager();
+export const useSimulation = (): PhysicsPageLogic & {
+  getCurrentSimulation: () => any;
+  gravity: { enabled: boolean; magnitude: number; direction: number };
+  updateGravity: (newValues: Partial<{ enabled: boolean; magnitude: number; direction: number }>) => void;
+} => {
+  const managerRef = useRef<KinematicSimulationManager | null>(null);
+  if (!managerRef.current) {
+    managerRef.current = new KinematicSimulationManager();
+  }
+  const manager = managerRef.current;
+
   const { selectedTopic, handleTopicSelect } = useTopicSelection();
   const { selectedSubtopic, handleSubtopicSelect } = useSubtopicSelection(selectedTopic);
   const {
     selectedObjects,
-    selectedSupportTools,
+    selectedGlobalTools,
+    selectedObjectTools,
     showPopup,
     popupItem,
     handleObjectSelect,
-    handleSupportToolSelect,
+    handleGlobalToolSelect,
+    handleObjectToolSelect,
     handlePopupClose,
     setSelectedObjects,
-    setSelectedSupportTools,
-  } = useObjectSelection();
+    setSelectedGlobalTools,
+    setSelectedObjectTools,
+  } = useObjectSelection() as {
+    selectedObjects: { id: string; type: string }[];
+    selectedGlobalTools: { id: string; type: string }[];
+    selectedObjectTools: SupportTool[];
+    showPopup: boolean;
+    popupItem: any;
+    handleObjectSelect: (object: string) => void;
+    handleGlobalToolSelect: (tool: string) => void;
+    handleObjectToolSelect: (tool: string, targetObjectId?: string) => void;
+    handlePopupClose: () => void;
+    setSelectedObjects: React.Dispatch<React.SetStateAction<{ id: string; type: string }[]>>;
+    setSelectedGlobalTools: React.Dispatch<React.SetStateAction<{ id: string; type: string }[]>>;
+    setSelectedObjectTools: React.Dispatch<React.SetStateAction<SupportTool[]>>;
+  };
+
   const [objectAttributes, setObjectAttributes] = useState<Record<string, any>>({});
-  const [supportToolAttributes, setSupportToolAttributes] = useState<Record<string, any>>({});
+  const [globalToolAttributes, setGlobalToolAttributes] = useState<Record<string, any>>({});
+  const [objectToolAttributes, setObjectToolAttributes] = useState<Record<string, any>>({});
   const {
     isSimulationRunning,
     canvasResetTrigger,
@@ -75,53 +104,91 @@ export const useSimulation = (): PhysicsPageLogic & { getCurrentSimulation: () =
     handleStopSimulation: originalHandleStopSimulation,
     handleResetSimulation: originalHandleResetSimulation,
     setIsSimulationRunning,
+    gravity,
+    updateGravity,
   } = useSimulationControl();
   const {
     formAttributes,
     handleAttributeChange,
     handlePopupSave: originalHandlePopupSave,
   } = useAttributeForm(
-  popupItem,
-  objectAttributes,
-  supportToolAttributes,
-  setObjectAttributes,
-  setSupportToolAttributes,
-  handlePopupClose
-);;
+    popupItem,
+    objectAttributes,
+    { ...globalToolAttributes, ...objectToolAttributes },
+    setObjectAttributes,
+    (attrs) => {
+      if (popupItem?.kind === "globalTool") {
+        setGlobalToolAttributes(attrs);
+      } else if (popupItem?.kind === "objectTool") {
+        setObjectToolAttributes(attrs);
+      }
+    },
+    handlePopupClose
+  );
+
   const [showCoordinates, setShowCoordinates] = useState<boolean>(true);
 
   const toggleCoordinates = () => {
     setShowCoordinates((prev) => !prev);
   };
 
-  // Sync manager with topic/subtopic changes
+  // Sync manager with topic/subtopic
   useEffect(() => {
     manager.setTopic(selectedTopic);
-  }, [selectedTopic]);
+  }, [selectedTopic, manager]);
 
   useEffect(() => {
     manager.setSubtopic(selectedSubtopic);
-  }, [selectedSubtopic]);
+  }, [selectedSubtopic, manager]);
 
-  // Sync manager with object selections
+  // Sync gravity with manager
   useEffect(() => {
+    if (gravity.enabled) {
+      manager.updateItem("gravity_global", "Gravity", {
+        magnitude: gravity.magnitude,
+        direction: gravity.direction,
+        enabled: true,
+      }, true);
+    } else {
+      manager.removeItem("gravity_global");
+    }
+  }, [gravity, manager]);
+
+  // Sync objects, global tools, and object tools
+  useEffect(() => {
+    if (isSimulationRunning) return;
+
     selectedObjects.forEach((obj) => {
       const attrs = objectAttributes[obj.id] || {};
       manager.updateItem(obj.id, obj.type, attrs, false);
     });
-    selectedSupportTools.forEach((tool) => {
-      const attrs = supportToolAttributes[tool.id] || {};
+
+    selectedGlobalTools.forEach((tool) => {
+      const attrs = globalToolAttributes[tool.id] || {};
       manager.updateItem(tool.id, tool.type, attrs, true);
     });
-  }, [selectedObjects, selectedSupportTools, objectAttributes, supportToolAttributes]);
 
-  // Update React state with simulation state during running
+    selectedObjectTools.forEach((tool) => {
+      const attrs = objectToolAttributes[tool.id] || {};
+      manager.updateItem(tool.id, tool.type, { ...attrs, targetObjectId: tool.targetObjectId }, true);
+    });
+  }, [
+    selectedObjects,
+    selectedGlobalTools,
+    selectedObjectTools,
+    objectAttributes,
+    globalToolAttributes,
+    objectToolAttributes,
+    isSimulationRunning,
+    manager,
+  ]);
+
+  // Update attributes during simulation
   useEffect(() => {
     let animationFrame: number | null = null;
 
     const updateAttributesFromSimulation = () => {
       if (!isSimulationRunning) return;
-
       const state = manager.getState();
 
       setObjectAttributes((prev) => {
@@ -133,26 +200,10 @@ export const useSimulation = (): PhysicsPageLogic & { getCurrentSimulation: () =
               position: { x: item.x, y: item.y },
               velocityX: item.velocityX,
               velocityY: item.velocityY,
+              accelerationX: item.accelerationX,
+              accelerationY: item.accelerationY,
               angle: item.angle,
               size: item.size,
-              color: item.color,
-            };
-          }
-        });
-        return newAttrs;
-      });
-
-      setSupportToolAttributes((prev) => {
-        const newAttrs = { ...prev };
-        state.forEach((item: any) => {
-          if (newAttrs[item.id] && item.type === "surface") {
-            newAttrs[item.id] = {
-              ...newAttrs[item.id],
-              startX: item.startX,
-              startY: item.startY,
-              endX: item.endX,
-              endY: item.endY,
-              angle: item.angle,
               color: item.color,
             };
           }
@@ -166,18 +217,17 @@ export const useSimulation = (): PhysicsPageLogic & { getCurrentSimulation: () =
     if (isSimulationRunning) {
       animationFrame = requestAnimationFrame(updateAttributesFromSimulation);
     }
-
     return () => {
-      if (animationFrame) {
-        cancelAnimationFrame(animationFrame);
-      }
+      if (animationFrame) cancelAnimationFrame(animationFrame);
     };
   }, [isSimulationRunning, manager]);
 
+  // Wrapped handlers
   const wrappedHandleTopicSelect = (topic: string) => {
     handleTopicSelect(topic);
     setSelectedObjects([]);
-    setSelectedSupportTools([]);
+    setSelectedGlobalTools([]);
+    setSelectedObjectTools([]);
     handlePopupClose();
     manager.setTopic(topic);
   };
@@ -185,34 +235,32 @@ export const useSimulation = (): PhysicsPageLogic & { getCurrentSimulation: () =
   const wrappedHandleSubtopicSelect = (subtopic: string | null) => {
     handleSubtopicSelect(subtopic);
     setSelectedObjects([]);
-    setSelectedSupportTools([]);
+    setSelectedGlobalTools([]);
+    setSelectedObjectTools([]);
     handlePopupClose();
     manager.setSubtopic(subtopic);
   };
 
   const wrappedHandleObjectSelect = (object: string) => {
+    const id = Math.random().toString(36).substr(2, 9);
     handleObjectSelect(object);
-    const id = selectedObjects[selectedObjects.length - 1]?.id;
-    if (id) {
-      manager.addObjectFromType(object);
-    }
+    manager.addObjectFromType(object, id);
   };
 
-  const wrappedHandleSupportToolSelect = (tool: string) => {
-    handleSupportToolSelect(tool);
-    const id = selectedSupportTools[selectedSupportTools.length - 1]?.id;
-    if (id) {
-      manager.addObjectFromType(tool);
-    }
+  const wrappedHandleGlobalToolSelect = (tool: string) => {
+    handleGlobalToolSelect(tool);
+  };
+
+  const wrappedHandleObjectToolSelect = (tool: string, targetObjectId?: string) => {
+    handleObjectToolSelect(tool, targetObjectId);
   };
 
   const wrappedHandlePopupSave = (attributes: Record<string, any>) => {
-  originalHandlePopupSave(attributes); // truyền attributes vào
-  if (popupItem) {
-    manager.updateItem(popupItem.id, popupItem.type, attributes, popupItem.isSupportTool);
-  }
-};
-
+    originalHandlePopupSave(attributes);
+    if (popupItem) {
+      manager.updateItem(popupItem.id, popupItem.type, attributes, popupItem.kind !== "object");
+    }
+  };
 
   const wrappedHandleRunSimulation = () => {
     originalHandleRunSimulation();
@@ -227,6 +275,12 @@ export const useSimulation = (): PhysicsPageLogic & { getCurrentSimulation: () =
   const wrappedHandleResetSimulation = () => {
     originalHandleResetSimulation();
     manager.reset();
+    setSelectedObjects([]);
+    setSelectedGlobalTools([]);
+    setSelectedObjectTools([]);
+    setObjectAttributes({});
+    setGlobalToolAttributes({});
+    setObjectToolAttributes({});
   };
 
   const getCurrentSimulation = () => {
@@ -237,29 +291,34 @@ export const useSimulation = (): PhysicsPageLogic & { getCurrentSimulation: () =
     selectedTopic,
     selectedSubtopic,
     selectedObjects,
-    selectedSupportTools,
+    selectedGlobalTools,
+    selectedObjectTools,
     showPopup,
     popupItem,
     isSimulationRunning,
     canvasResetTrigger,
     physicsData,
     objectAttributes,
-    supportToolAttributes,
+    globalToolAttributes,
+    objectToolAttributes,
     handleTopicSelect: wrappedHandleTopicSelect,
     handleSubtopicSelect: wrappedHandleSubtopicSelect,
     handleObjectSelect: wrappedHandleObjectSelect,
-    handleSupportToolSelect: wrappedHandleSupportToolSelect,
+    handleGlobalToolSelect: wrappedHandleGlobalToolSelect,
+    handleObjectToolSelect: wrappedHandleObjectToolSelect,
     handlePopupClose,
     handlePopupSave: wrappedHandlePopupSave,
     handleAttributeChange,
     handleRunSimulation: wrappedHandleRunSimulation,
     handleStopSimulation: wrappedHandleStopSimulation,
     handleResetSimulation: wrappedHandleResetSimulation,
-    getAttributesConfig: (item: string | null, isSupportTool: boolean) =>
-      getAttributesConfig(item, isSupportTool),
+    getAttributesConfig: (item: string | null, kind: ToolKind) =>
+      getAttributesConfig(item, kind),
     setIsSimulationRunning,
     showCoordinates,
     toggleCoordinates,
     getCurrentSimulation,
+    gravity,
+    updateGravity,
   };
 };

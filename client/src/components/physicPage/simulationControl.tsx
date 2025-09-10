@@ -1,13 +1,24 @@
 import React from "react";
-import { PlayIcon, PauseIcon, ArrowPathIcon, EyeIcon, EyeSlashIcon } from "@heroicons/react/24/solid";
+import {
+  PlayIcon,
+  PauseIcon,
+  ArrowPathIcon,
+  EyeIcon,
+  EyeSlashIcon,
+  GlobeAltIcon,
+} from "@heroicons/react/24/solid";
 
 interface SimulationControlsProps {
   isRunning: boolean;
   onRun: () => void;
   onStop: () => void;
   onReset: () => void;
-  showCoordinates: boolean; // New
-  onToggleCoordinates: () => void; // New
+  showCoordinates: boolean;
+  onToggleCoordinates: () => void;
+
+  // Gravity toggle
+  isGravityEnabled: boolean;
+  onToggleGravity: () => void;
 }
 
 const SimulationControls: React.FC<SimulationControlsProps> = ({
@@ -15,8 +26,10 @@ const SimulationControls: React.FC<SimulationControlsProps> = ({
   onRun,
   onStop,
   onReset,
-  showCoordinates, // New
-  onToggleCoordinates, // New
+  showCoordinates,
+  onToggleCoordinates,
+  isGravityEnabled,
+  onToggleGravity,
 }) => {
   return (
     <div className="bg-white border border-gray-300 px-4 py-3 flex flex-wrap justify-center gap-4">
@@ -54,7 +67,7 @@ const SimulationControls: React.FC<SimulationControlsProps> = ({
         <ArrowPathIcon className="h-6 w-6 text-current" />
       </div>
 
-      {/* Toggle Coordinates Button */}
+      {/* Toggle Coordinates */}
       <div
         onClick={onToggleCoordinates}
         className="w-12 h-12 flex items-center justify-center bg-purple-500 hover:bg-purple-600 rounded-full shadow-lg hover:cursor-pointer hover:shadow-xl hover:scale-105 transition-all text-white"
@@ -64,6 +77,18 @@ const SimulationControls: React.FC<SimulationControlsProps> = ({
         ) : (
           <EyeSlashIcon className="h-6 w-6 text-current" />
         )}
+      </div>
+
+      {/* Toggle Gravity */}
+      <div
+        onClick={onToggleGravity}
+        className={`w-12 h-12 flex items-center justify-center rounded-full shadow-lg hover:cursor-pointer hover:shadow-xl hover:scale-105 transition-all ${
+          isGravityEnabled
+            ? "bg-yellow-500 hover:bg-yellow-600 text-white"
+            : "bg-gray-400 hover:bg-gray-500 text-white"
+        }`}
+      >
+        <GlobeAltIcon className="h-6 w-6 text-current" />
       </div>
     </div>
   );

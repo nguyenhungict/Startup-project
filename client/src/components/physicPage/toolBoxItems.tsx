@@ -7,6 +7,11 @@ interface ItemProps {
 }
 
 const icons: { [key: string]: JSX.Element } = {
+  movingobject: (   // 👈 thêm entry cho moving object
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="12" cy="12" r="10" />
+    </svg>
+  ),
   sphere: (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <circle cx="12" cy="12" r="10" />
@@ -90,7 +95,7 @@ const Item: React.FC<ItemProps> = ({ object, onObjectSelect, isSelected }) => {
       }`}
     >
       <div className="w-8 h-8 flex items-center justify-center">
-        {icons[object.toLowerCase()] || icons.default}
+        {icons[object.toLowerCase().replace(/\s+/g, "")] || icons.default}
       </div>
       <span className="text-xs mt-1 text-center">{object}</span>
     </div>

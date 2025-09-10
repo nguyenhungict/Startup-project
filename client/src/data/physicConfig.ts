@@ -1,4 +1,5 @@
-
+// src/data/physicConfig.ts
+export type ToolKind = "object" | "globalTool" | "objectTool";
 
 export interface Attribute {
   name: string;
@@ -11,50 +12,62 @@ export interface Attribute {
   options?: string[];
 }
 
+export interface PhysicsToolConfig {
+  id: string;
+  name: string;
+  kind: ToolKind;
+  attributes: Attribute[];
+}
+
 export const objectAttributeConfigs: Record<string, Attribute[]> = {
   "Moving Object": [
-    { name: "Mass", key: "mass", type: "number", defaultValue: 1, min: 0, max: 10000, step: 0.1 },
-    { name: "Size", key: "size", type: "number", defaultValue: 30, min: 0, max: 100, step: 0.1 },
-    { name: "Color", key: "color", type: "color", defaultValue: "blue" },
-    { name: "Static", key: "isStatic", type: "boolean", defaultValue: false },
     { name: "Initial Position", key: "initialPosition", type: "position", defaultValue: { x: 0, y: 0 }, min: -1000, max: 1000, step: 1 },
     { name: "Initial Velocity", key: "initialVelocity", type: "position", defaultValue: { x: 0, y: 0 }, min: -1000, max: 1000, step: 1 },
-    { name: "Initial Acceleration", key: "initialAcceleration", type: "position", defaultValue: { x: 0, y: 0 }, min: -1000, max: 1000, step: 1 }
+    { name: "Initial Acceleration", key: "initialAcceleration", type: "position", defaultValue: { x: 0, y: 0 }, min: -1000, max: 1000, step: 1 },
   ],
-  
   // ... other objects
 };
 
-export const supportToolAttributeConfigs: Record<string, Attribute[]> = {
-  GravityForceVector: [
-    { name: "Enabled", key: "enabled", type: "boolean", defaultValue: true },
-    { name: "Magnitude", key: "magnitude", type: "number", defaultValue: 9.81, min: 0, max: 1000, step: 0.1 },
-    { name: "Direction", key: "direction", type: "number", defaultValue: 270, min: 0, max: 360, step: 1 }, // Direction in degrees
-    { name: "Coefficient", key: "coefficient", type: "number", defaultValue: 1, min: 0, max: 1000, step: 0.1 },
-  ],
-  LightRayInfluence: [
-    { name: "Enabled", key: "enabled", type: "boolean", defaultValue: true },
-    { name: "Wavelength", key: "wavelength", type: "number", defaultValue: 550, min: 400, max: 700, step: 1 },
-    { name: "Intensity", key: "intensity", type: "number", defaultValue: 1, min: 0, max: 10, step: 0.1 },
-  ],
+export const globalToolAttributeConfigs: Record<string, Attribute[]> = {
   Gravity: [
     { name: "Magnitude", key: "magnitude", type: "number", defaultValue: 9.81, min: 0, max: 1000, step: 0.1 },
     { name: "Direction", key: "direction", type: "number", defaultValue: 90, min: 0, max: 360, step: 1 },
   ],
-  Surface: [
-    { name: "Position", key: "position", type: "position", defaultValue: { x: 0, y: 400 } },
-    { name: "Width", key: "width", type: "number", defaultValue: 800, min: 0, step: 1 },
-    { name: "Angle", key: "angle", type: "number", defaultValue: 0, min: -90, max: 90, step: 1 },
-    { name: "Color", key: "color", type: "color", defaultValue: "black" },
-  ],
+  // ... other global tools
+};
 
-  // ... other support tools
+export const objectToolAttributeConfigs: Record<string, Attribute[]> = {
+  VelocityVector: [
+    { name: "Vector", key: "vector", type: "position", defaultValue: { x: 0, y: 0 }, min: -1000, max: 1000, step: 1 },
+  ],
+  AppliedForceVector: [
+    { name: "Enabled", key: "enabled", type: "boolean", defaultValue: true },
+    { name: "Magnitude", key: "magnitude", type: "number", defaultValue: 10, min: 0, max: 1000, step: 0.1 },
+    { name: "Direction", key: "direction", type: "number", defaultValue: 0, min: 0, max: 360, step: 1 },
+  ],
+  FrictionForceVector: [
+    { name: "Enabled", key: "enabled", type: "boolean", defaultValue: true },
+    { name: "Coefficient", key: "coefficient", type: "number", defaultValue: 0.1, min: 0, max: 1, step: 0.01 },
+  ],
+  // ... other object tools
 };
 
 export const getAttributesConfig = (
   item: string | null,
-  isSupportTool: boolean
+  kind: ToolKind
 ): Attribute[] => {
   if (!item) return [];
-  return isSupportTool ? supportToolAttributeConfigs[item] || [] : objectAttributeConfigs[item] || [];
+  if (kind === "object") return objectAttributeConfigs[item] || [];
+  if (kind === "globalTool") return globalToolAttributeConfigs[item] || [];
+  if (kind === "objectTool") return objectToolAttributeConfigs[item] || [];
+  return [];
+};
+
+export const getToolKind = (type: string): ToolKind => {
+  if (objectAttributeConfigs[type]) return "object";
+  if (globalToolAttributeConfigs[type]) return "globalTool";
+  if (objectToolAttributeConfigs[type]) return "objectTool";
+
+  console.warn(`⚠️ Unknown tool type: ${type}, defaulting to "object"`);
+  return "object";
 };

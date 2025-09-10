@@ -1,43 +1,70 @@
+
 // src/components/physicPage/PhysicsToolbox.tsx
 import React from "react";
-
-import type { PhysicsPageLogic } from "../../hooks/physicsPage/type";
 import Item from "./toolBoxItems";
 
 interface ToolboxProps {
-  simulations: { objects: string[]; supportTools: string[]; subtopics?: string[] };
+  simulations: {
+    objects: string[];
+    globalTools: string[];
+    objectTools: string[];
+    subtopics?: string[];
+  };
   selectedSubtopic: string | null;
   selectedObjects: { id: string; type: string }[];
-  selectedSupportTools: { id: string; type: string }[];
+  selectedGlobalTools: { id: string; type: string }[];
+  selectedObjectTools: { id: string; type: string; targetObjectId?: string }[];
   onSubtopicSelect: (subtopic: string | null) => void;
   onObjectSelect: (item: string) => void;
-  onSupportToolSelect: (item: string) => void;
-  isSupportToolToolbox: boolean;
+  onGlobalToolSelect: (item: string) => void;
+  onObjectToolSelect: (item: string, targetObjectId?: string) => void;
+  activeToolbox: "subtopic" | "object" | "globalTool" | "objectTool";
 }
 
 const Toolbox: React.FC<ToolboxProps> = ({
   simulations,
   selectedSubtopic,
   selectedObjects,
-  selectedSupportTools,
+  selectedGlobalTools,
+  selectedObjectTools,
   onSubtopicSelect,
   onObjectSelect,
-  onSupportToolSelect,
-  isSupportToolToolbox,
+  onGlobalToolSelect,
+  onObjectToolSelect,
+  activeToolbox,
 }) => {
-  const items = isSupportToolToolbox ? simulations.supportTools : simulations.objects;
-  const selectedItem = isSupportToolToolbox
-    ? selectedSupportTools[0]?.type
-    : selectedObjects[0]?.type;
+  const items =
+    activeToolbox === "object"
+      ? simulations.objects
+      : activeToolbox === "globalTool"
+      ? simulations.globalTools
+      : activeToolbox === "objectTool"
+      ? simulations.objectTools
+      : simulations.subtopics || [];
+
+  const selectedItem =
+    activeToolbox === "object"
+      ? selectedObjects[0]?.type
+      : activeToolbox === "globalTool"
+      ? selectedGlobalTools[0]?.type
+      : activeToolbox === "objectTool"
+      ? selectedObjectTools[0]?.type
+      : selectedSubtopic;
 
   return (
     <div className="p-4 border rounded bg-white w-64 flex-shrink-0 z-10 max-h-[calc(100vh-12rem)] overflow-y-auto">
       <h2 className="text-lg font-bold mb-4 text-center">
-        {isSupportToolToolbox ? "Support Tools" : simulations.subtopics ? "Subtopics" : "Objects"}
+        {activeToolbox === "subtopic"
+          ? "Subtopics"
+          : activeToolbox === "object"
+          ? "Objects"
+          : activeToolbox === "globalTool"
+          ? "Global Tools"
+          : "Object Tools"}
       </h2>
-      {simulations.subtopics ? (
+      {activeToolbox === "subtopic" ? (
         <div className="grid grid-cols-1 gap-2">
-          {simulations.subtopics.map((subtopic) => (
+          {simulations.subtopics?.map((subtopic) => (
             <button
               key={subtopic}
               onClick={() => onSubtopicSelect(subtopic)}
@@ -59,13 +86,19 @@ const Toolbox: React.FC<ToolboxProps> = ({
                 <Item
                   key={index}
                   object={item}
-                  onObjectSelect={isSupportToolToolbox ? onSupportToolSelect : onObjectSelect}
+                  onObjectSelect={
+                    activeToolbox === "object"
+                      ? () => onObjectSelect(item)
+                      : activeToolbox === "globalTool"
+                      ? () => onGlobalToolSelect(item)
+                      : () => onObjectToolSelect(item)
+                  }
                   isSelected={selectedItem === item}
                 />
               ))
             ) : (
               <p className="text-center col-span-2">
-                No {isSupportToolToolbox ? "support tools" : "objects"} available.
+                No {activeToolbox === "object" ? "objects" : activeToolbox === "globalTool" ? "global tools" : "object tools"} available.
               </p>
             )}
           </div>

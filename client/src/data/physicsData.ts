@@ -1,9 +1,10 @@
-// data/physicsData.ts
+// src/data/physicsData.ts
 export interface PhysicsData {
   [topic: string]: {
     [subtopic: string]: {
       objects: string[];
-      supportTools: string[];
+      globalTools: string[];
+      objectTools: string[];
     };
   };
 }
@@ -12,61 +13,72 @@ export const physicsData: PhysicsData = {
   mechanics: {
     Kinematics: {
       objects: ["Moving Object"],
-      supportTools: ["Gravity", "Surface"],
+      globalTools: ["Gravity"],
+      objectTools: ["VelocityVector", "AccelerationVector"],
     },
     Dynamics: {
-      objects: ["Box", "Ramp", "Force Vector", "Friction Surface", "Lever", "Fulcrum", "Weights", "Rotating Wheel"],
-      supportTools: ["GravityForceVector", "FrictionForceVector", "NormalForceVector", "AppliedForceVector"],
+      objects: ["Box", "Ramp", "Lever", "Fulcrum", "Weights", "Rotating Wheel"],
+      globalTools: ["Gravity"],
+      objectTools: ["AppliedForceVector", "FrictionForceVector", "NormalForceVector"],
     },
     Energy: {
       objects: ["Box", "Spring", "Sphere", "Cart", "Flat Surface", "Container", "Liquid", "Floating Object", "Elastic Rod", "Weight"],
-      supportTools: ["GravityEnergyInfluence", "SpringEnergyInfluence", "FrictionEnergyInfluence", "BuoyantEnergyInfluence"],
+      globalTools: ["GravityEnergyInfluence"],
+      objectTools: ["SpringEnergyInfluence", "FrictionEnergyInfluence", "BuoyantEnergyInfluence"],
     },
   },
   "oscillations-waves": {
     Oscillations: {
       objects: ["Pendulum", "Spring", "Mass on Spring"],
-      supportTools: ["GravityOscillationInfluence", "SpringOscillationInfluence", "DampingInfluence"],
+      globalTools: ["GravityOscillationInfluence"],
+      objectTools: ["SpringOscillationInfluence", "DampingInfluence"],
     },
     Waves: {
       objects: ["Wave Source", "Medium", "Barrier"],
-      supportTools: ["WavePropagationInfluence"],
+      globalTools: [],
+      objectTools: ["WavePropagationInfluence"],
     },
   },
   sound: {
     "Sound Waves": {
       objects: ["Speaker", "Microphone", "Sound Source"],
-      supportTools: ["SoundPressureInfluence"],
+      globalTools: [],
+      objectTools: ["SoundPressureInfluence"],
     },
   },
   optics: {
     "Light and Reflection": {
       objects: ["Light Source", "Mirror", "Lens"],
-      supportTools: ["LightRayInfluence"],
+      globalTools: [],
+      objectTools: ["LightRayInfluence"],
     },
   },
   electricity: {
     "Electric Fields": {
       objects: ["Charge", "Capacitor", "Battery"],
-      supportTools: ["ElectricFieldInfluence"],
+      globalTools: [],
+      objectTools: ["ElectricFieldInfluence"],
     },
   },
   electromagnetism: {
     "Magnetic Fields": {
       objects: ["Magnet", "Current Wire", "Coil"],
-      supportTools: ["MagneticFieldInfluence"],
+      globalTools: [],
+      objectTools: ["MagneticFieldInfluence"],
     },
   },
   thermodynamics: {
     "Heat Transfer": {
       objects: ["Heat Source", "Insulator", "Conductor"],
-      supportTools: ["HeatFlowInfluence"],
+      globalTools: [],
+      objectTools: ["HeatFlowInfluence"],
     },
   },
   "astronomy-earth": {
     "Planetary Motion": {
       objects: ["Planet", "Star", "Satellite"],
-      supportTools: ["GravitationalOrbitInfluence"],
+      globalTools: ["GravitationalOrbitInfluence"],
+      objectTools: [],
     },
   },
 };

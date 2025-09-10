@@ -1,5 +1,5 @@
 // src/Model/physic/Mechanics/Kinematics/kinematicsEngine.ts
-import { Vector2 } from "../../common/Vector2";
+import { Vector2 } from "../../../common/Vector2";
 
 export interface PhysicsObjectConfig {
   type: string;
@@ -20,14 +20,16 @@ export interface PhysicsObjectConfig {
 }
 
 export interface ForceConfig {
+  id: string;
   type: string;
   enabled: boolean;
   attributes: {
     magnitude: number;
     direction: number;
     coefficient?: number;
+    vector?: { x: number; y: number };
   };
-  targetObjectId?: string;  // Optional target for per-object forces
+  targetObjectId?: string;
 }
 
 export interface PhysicsObject {
@@ -36,6 +38,7 @@ export interface PhysicsObject {
   velocity: Vector2;
   acceleration: Vector2;
   mass: number;
+  forces: ForceConfig[];
   update(dt: number): void;
   applyForce(force: Vector2): void;
   getState(): any;
@@ -49,6 +52,7 @@ export class PointMassKinematic implements PhysicsObject {
   mass: number;
   size?: number;
   color?: string;
+  forces: ForceConfig[];
 
   constructor(id: string, config: PhysicsObjectConfig) {
     this.id = id;
@@ -64,7 +68,8 @@ export class PointMassKinematic implements PhysicsObject {
     this.mass = config.attributes.mass ?? 1;
     this.size = config.attributes.size;
     this.color = config.attributes.color;
-    console.log('PointMassKinematic created:', { id, position: this.position, velocity: this.velocity, mass: this.mass });
+    this.forces = [];
+    console.log("PointMassKinematic created:", { id, position: this.position, velocity: this.velocity, mass: this.mass });
   }
 
   update(dt: number): void {
@@ -74,12 +79,11 @@ export class PointMassKinematic implements PhysicsObject {
     this.position = this.position.add(this.velocity.scale(dt));
     // Reset acceleration for next frame (forces will be reapplied)
     this.acceleration = new Vector2(0, 0);
-    
-    console.log('PointMassKinematic update:', { 
-      id: this.id, 
-      position: this.position, 
-      velocity: this.velocity, 
-      dt 
+    console.log("PointMassKinematic update:", {
+      id: this.id,
+      position: this.position,
+      velocity: this.velocity,
+      dt,
     });
   }
 
@@ -87,11 +91,11 @@ export class PointMassKinematic implements PhysicsObject {
     if (this.mass !== Infinity && this.mass > 0) {
       const acceleration = force.scale(1 / this.mass);
       this.acceleration = this.acceleration.add(acceleration);
-      console.log('PointMassKinematic force applied:', { 
-        id: this.id, 
-        force, 
-        acceleration, 
-        totalAcceleration: this.acceleration 
+      console.log("PointMassKinematic force applied:", {
+        id: this.id,
+        force,
+        acceleration,
+        totalAcceleration: this.acceleration,
       });
     }
   }
@@ -107,6 +111,7 @@ export class PointMassKinematic implements PhysicsObject {
     color?: string;
     velocityX?: number;
     velocityY?: number;
+    forces: ForceConfig[];
   } {
     return {
       id: this.id,
@@ -119,6 +124,7 @@ export class PointMassKinematic implements PhysicsObject {
       color: this.color,
       velocityX: this.velocity.x,
       velocityY: this.velocity.y,
+      forces: this.forces,
     };
   }
 }
@@ -133,6 +139,7 @@ export class Surface implements PhysicsObject {
   width: number;
   angle: number;
   color?: string;
+  forces: ForceConfig[] = [];
 
   constructor(id: string, config: PhysicsObjectConfig) {
     this.id = id;
@@ -140,7 +147,7 @@ export class Surface implements PhysicsObject {
       config.attributes.positionX ?? 0,
       config.attributes.positionY ?? 400
     );
-    this.angle = (config.attributes.angle ?? 0) * Math.PI / 180; // Convert to radians
+    this.angle = (config.attributes.angle ?? 0) * Math.PI / 180;
     this.width = config.attributes.width ?? 800;
     this.endPosition = this.position.add(
       new Vector2(Math.cos(this.angle), Math.sin(this.angle)).scale(this.width)
@@ -164,6 +171,7 @@ export class Surface implements PhysicsObject {
     endX: number;
     endY: number;
     color?: string;
+    forces: ForceConfig[];
   } {
     return {
       id: this.id,
@@ -173,42 +181,57 @@ export class Surface implements PhysicsObject {
       endX: this.endPosition.x,
       endY: this.endPosition.y,
       color: this.color,
+      forces: this.forces,
     };
   }
 }
 
 export class KinematicsEngine {
   private objects: Map<string, PhysicsObject>;
-  private forces: Map<string, ForceConfig>;
+  private globalForces: Map<string, ForceConfig>;
   private isRunning: boolean;
   private lastTime: number | null;
 
   constructor() {
     this.objects = new Map();
-    this.forces = new Map();
+    this.globalForces = new Map();
     this.isRunning = false;
     this.lastTime = null;
   }
 
   addObject(id: string, type: string, config: PhysicsObjectConfig) {
-    console.log('KinematicsEngine: Adding object', { id, type, config });
+    console.log("KinematicsEngine: Adding object", { id, type, config });
     const lowerType = type.toLowerCase();
     if (lowerType === "moving object") {
       this.objects.set(id, new PointMassKinematic(id, config));
     } else if (lowerType === "surface") {
       this.objects.set(id, new Surface(id, config));
     }
-    // Add other object types as needed
   }
 
   removeObject(id: string) {
-    console.log('KinematicsEngine: Removing object', { id });
+    console.log("KinematicsEngine: Removing object", { id });
     this.objects.delete(id);
   }
 
   addForce(id: string, config: ForceConfig) {
-    console.log('KinematicsEngine: Adding force', { id, config });
-    this.forces.set(id, config);
+    console.log("KinematicsEngine: Adding force", { id, config });
+    if (config.targetObjectId) {
+      const obj = this.objects.get(config.targetObjectId);
+      if (obj) {
+        obj.forces.push({ ...config, id });
+      }
+    } else {
+      this.globalForces.set(id, config);
+    }
+  }
+
+  removeForce(id: string) {
+    console.log("KinematicsEngine: Removing force", { id });
+    this.objects.forEach((obj) => {
+      obj.forces = obj.forces.filter((f) => f.id !== id);
+    });
+    this.globalForces.delete(id);
   }
 
   start() {
@@ -223,16 +246,16 @@ export class KinematicsEngine {
   }
 
   reset() {
-    console.log('KinematicsEngine: Resetting');
+    console.log("KinematicsEngine: Resetting");
     this.objects.clear();
-    this.forces.clear();
+    this.globalForces.clear();
     this.isRunning = false;
     this.lastTime = null;
   }
 
   private resolveCollisions() {
-    const surfaces = Array.from(this.objects.values()).filter(obj => obj instanceof Surface);
-    const dynamicObjs = Array.from(this.objects.values()).filter(obj => obj.mass !== Infinity);
+    const surfaces = Array.from(this.objects.values()).filter((obj) => obj instanceof Surface);
+    const dynamicObjs = Array.from(this.objects.values()).filter((obj) => obj.mass !== Infinity);
 
     for (const dyn of dynamicObjs) {
       for (const surf of surfaces as Surface[]) {
@@ -240,17 +263,17 @@ export class KinematicsEngine {
         const lineEnd = surf.endPosition;
         const lineVec = lineEnd.subtract(lineStart);
         const lineLength = lineVec.length();
-        
-        if (lineLength === 0) continue; // Skip zero-length surfaces
-        
+
+        if (lineLength === 0) continue;
+
         const normal = new Vector2(-lineVec.y, lineVec.x).normalize();
         const pointVec = dyn.position.subtract(lineStart);
         const projScalar = pointVec.dot(lineVec.normalize());
-        
+
         if (projScalar < 0 || projScalar > lineLength) continue;
-        
+
         const signedDistance = pointVec.dot(normal);
-        if (signedDistance > 0 && signedDistance < 5) { // Add threshold for collision
+        if (signedDistance > 0 && signedDistance < 5) {
           dyn.position = dyn.position.subtract(normal.scale(signedDistance));
           const velPerp = dyn.velocity.dot(normal);
           if (velPerp > 0) {
@@ -263,9 +286,9 @@ export class KinematicsEngine {
 
   update() {
     if (!this.isRunning) return;
-    
+
     const currentTime = performance.now();
-    const dt = Math.min((currentTime - (this.lastTime ?? currentTime)) / 1000, 0.016); // Cap at ~60fps
+    const dt = Math.min((currentTime - (this.lastTime ?? currentTime)) / 1000, 0.016);
     this.lastTime = currentTime;
 
     if (dt <= 0) {
@@ -277,38 +300,56 @@ export class KinematicsEngine {
 
     // Apply forces to all dynamic objects
     this.objects.forEach((obj) => {
-      if (obj.mass === Infinity) return; // Skip static objects
-      
-      this.forces.forEach((force) => {
-        if (force.enabled && (force.targetObjectId === undefined || force.targetObjectId === obj.id)) {
-          const { magnitude, direction, coefficient } = force.attributes;
+      if (obj.mass === Infinity) return;
+
+      // Apply global forces
+      this.globalForces.forEach((force) => {
+        if (force.enabled) {
+          const { magnitude, direction } = force.attributes;
           const rad = direction * Math.PI / 180;
           const dirVec = new Vector2(Math.cos(rad), Math.sin(rad));
-          let forceVec = new Vector2(0, 0);
-          
-          switch (force.type.toLowerCase()) {
-            case "gravity":
-              forceVec = dirVec.scale(magnitude * obj.mass);
-              break;
-            case "applied force":
-              forceVec = dirVec.scale(magnitude);
-              break;
-            case "friction":
-              // Simple kinetic friction (opposite to velocity direction)
-              if (obj.velocity.magnitude() > 0) {
-                const frictionDir = obj.velocity.normalize().scale(-1);
-                const normalForce = obj.mass * 9.81; // Assuming horizontal surface
-                forceVec = frictionDir.scale((coefficient ?? 0.1) * normalForce);
-              }
-              break;
-            default:
-              forceVec = dirVec.scale(magnitude);
-              break;
+          let forceVec = dirVec.scale(magnitude * obj.mass);
+          obj.applyForce(forceVec);
+        }
+      });
+
+      // Apply object-specific forces (sum all vectors)
+      obj.forces.forEach((force) => {
+        if (force.enabled) {
+          let forceVec: Vector2;
+          if (force.attributes.vector) {
+            const { x, y } = force.attributes.vector;
+            forceVec = new Vector2(x, y);
+          } else {
+            const { magnitude, direction, coefficient } = force.attributes;
+            const rad = direction * Math.PI / 180;
+            const dirVec = new Vector2(Math.cos(rad), Math.sin(rad));
+            switch (force.type.toLowerCase()) {
+              case "velocity vector":
+                // Apply as a velocity change (not force, directly affect velocity)
+                obj.velocity = obj.velocity.add(dirVec.scale(magnitude));
+                return;
+              case "acceleration vector":
+                forceVec = dirVec.scale(magnitude * obj.mass);
+                break;
+              case "friction":
+                if (obj.velocity.magnitude() > 0) {
+                  const frictionDir = obj.velocity.normalize().scale(-1);
+                  const normalForce = obj.mass * 9.81;
+                  forceVec = frictionDir.scale((coefficient ?? 0.1) * normalForce);
+                } else {
+                  forceVec = new Vector2(0, 0);
+                }
+                break;
+              default:
+                forceVec = dirVec.scale(magnitude);
+                break;
+            }
           }
           obj.applyForce(forceVec);
         }
       });
-      
+
       obj.update(dt);
     });
 
@@ -325,19 +366,19 @@ export class KinematicsEngine {
       type: obj.constructor.name,
       config: obj.getState(),
     }));
-    console.log('KinematicsEngine: getObjects called', { objects });
+    console.log("KinematicsEngine: getObjects called", { objects });
     return objects;
   }
 
   getForces() {
-    const forces = Object.fromEntries(this.forces);
-    console.log('KinematicsEngine: getForces called', { forces });
+    const forces = Object.fromEntries(this.globalForces);
+    console.log("KinematicsEngine: getForces called", { forces });
     return forces;
   }
 
   getState() {
     const state = Array.from(this.objects.values()).map((obj) => obj.getState());
-    console.log('KinematicsEngine: getState called', { state, objectsCount: this.objects.size });
+    console.log("KinematicsEngine: getState called", { state, objectsCount: this.objects.size });
     return state;
   }
 }
