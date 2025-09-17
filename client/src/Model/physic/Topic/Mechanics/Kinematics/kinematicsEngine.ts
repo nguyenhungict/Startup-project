@@ -73,11 +73,8 @@ export class PointMassKinematic implements PhysicsObject {
   }
 
   update(dt: number): void {
-    // Apply acceleration to velocity
     this.velocity = this.velocity.add(this.acceleration.scale(dt));
-    // Apply velocity to position
     this.position = this.position.add(this.velocity.scale(dt));
-    // Reset acceleration for next frame (forces will be reapplied)
     this.acceleration = new Vector2(0, 0);
     console.log("PointMassKinematic update:", {
       id: this.id,
@@ -209,6 +206,35 @@ export class KinematicsEngine {
     }
   }
 
+  updateObject(id: string, config: PhysicsObjectConfig) {
+    console.log("KinematicsEngine: Updating object", { id, config });
+    const obj = this.objects.get(id);
+    if (obj instanceof PointMassKinematic) {
+      obj.position = new Vector2(
+        config.attributes.initialPositionX ?? obj.position.x,
+        config.attributes.initialPositionY ?? obj.position.y
+      );
+      obj.velocity = new Vector2(
+        config.attributes.initialVelocityX ?? obj.velocity.x,
+        config.attributes.initialVelocityY ?? obj.velocity.y
+      );
+      obj.mass = config.attributes.mass ?? obj.mass;
+      obj.size = config.attributes.size ?? obj.size;
+      obj.color = config.attributes.color ?? obj.color;
+    } else if (obj instanceof Surface) {
+      obj.position = new Vector2(
+        config.attributes.positionX ?? obj.position.x,
+        config.attributes.positionY ?? obj.position.y
+      );
+      obj.angle = (config.attributes.angle ?? obj.angle * 180 / Math.PI) * Math.PI / 180;
+      obj.width = config.attributes.width ?? obj.width;
+      obj.endPosition = obj.position.add(
+        new Vector2(Math.cos(obj.angle), Math.sin(obj.angle)).scale(obj.width)
+      );
+      obj.color = config.attributes.color ?? obj.color;
+    }
+  }
+
   removeObject(id: string) {
     console.log("KinematicsEngine: Removing object", { id });
     this.objects.delete(id);
@@ -232,6 +258,14 @@ export class KinematicsEngine {
       obj.forces = obj.forces.filter((f) => f.id !== id);
     });
     this.globalForces.delete(id);
+  }
+
+  removeForcesForObject(id: string) {
+    console.log("KinematicsEngine: Removing forces for object", { id });
+    const obj = this.objects.get(id);
+    if (obj) {
+      obj.forces = [];
+    }
   }
 
   start() {
@@ -298,11 +332,9 @@ export class KinematicsEngine {
       return;
     }
 
-    // Apply forces to all dynamic objects
     this.objects.forEach((obj) => {
       if (obj.mass === Infinity) return;
 
-      // Apply global forces
       this.globalForces.forEach((force) => {
         if (force.enabled) {
           const { magnitude, direction } = force.attributes;
@@ -313,7 +345,6 @@ export class KinematicsEngine {
         }
       });
 
-      // Apply object-specific forces (sum all vectors)
       obj.forces.forEach((force) => {
         if (force.enabled) {
           let forceVec: Vector2;
@@ -326,7 +357,6 @@ export class KinematicsEngine {
             const dirVec = new Vector2(Math.cos(rad), Math.sin(rad));
             switch (force.type.toLowerCase()) {
               case "velocity vector":
-                // Apply as a velocity change (not force, directly affect velocity)
                 obj.velocity = obj.velocity.add(dirVec.scale(magnitude));
                 return;
               case "acceleration vector":
@@ -380,5 +410,9 @@ export class KinematicsEngine {
     const state = Array.from(this.objects.values()).map((obj) => obj.getState());
     console.log("KinematicsEngine: getState called", { state, objectsCount: this.objects.size });
     return state;
+  }
+
+  hasObject(id: string) {
+    return this.objects.has(id);
   }
 }

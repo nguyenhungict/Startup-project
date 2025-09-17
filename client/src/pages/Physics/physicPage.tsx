@@ -1,7 +1,6 @@
 // src/pages/Physics/physicPage.tsx
-import React from "react";
+import React, { useMemo } from "react";
 import { ArrowLeftIcon } from "@heroicons/react/24/solid";
-
 import { useSimulation } from "../../hooks/physicsPage/useSimulation";
 import PhysicsSidebar from "../../components/physicPage/physicsSideBar";
 import SimulationControls from "../../components/physicPage/simulationControl";
@@ -39,9 +38,17 @@ const PhysicPage: React.FC = () => {
     getCurrentSimulation,
     showCoordinates,
     toggleCoordinates,
-    gravity,        // ✅ thêm
-  updateGravity
+    gravity,
+    updateGravity,
+    handleCanvasObjectClick,
   } = useSimulation();
+
+  const memoizedSelectedObjects = useMemo(() => selectedObjects, [selectedObjects]);
+  const memoizedObjectAttributes = useMemo(() => objectAttributes, [objectAttributes]);
+  const memoizedGlobalToolAttributes = useMemo(() => globalToolAttributes, [globalToolAttributes]);
+  const memoizedObjectToolAttributes = useMemo(() => objectToolAttributes, [objectToolAttributes]);
+
+  console.log("PhysicPage passing to Canvas:", { memoizedSelectedObjects, memoizedObjectAttributes });
 
   return (
     <div className="flex h-[calc(100vh-4rem)] overflow-hidden">
@@ -50,10 +57,11 @@ const PhysicPage: React.FC = () => {
         selectedTopic={selectedTopic}
         onTopicSelect={handleTopicSelect}
       />
+
       <div className="flex-1 flex min-w-0 overflow-hidden">
         {selectedTopic && (
           <div className="p-4 bg-white border-r w-72 flex-shrink-0 max-h-[calc(100vh-4rem)] overflow-y-auto">
-            {selectedTopic && !selectedSubtopic ? (
+            {!selectedSubtopic ? (
               <Toolbox
                 simulations={{
                   objects: [],
@@ -62,15 +70,16 @@ const PhysicPage: React.FC = () => {
                   subtopics: getCurrentSimulation().subtopics,
                 }}
                 selectedSubtopic={selectedSubtopic}
-                selectedObjects={selectedObjects}
+                selectedObjects={memoizedSelectedObjects}
                 selectedGlobalTools={selectedGlobalTools}
                 selectedObjectTools={selectedObjectTools}
                 onSubtopicSelect={handleSubtopicSelect}
                 onObjectSelect={handleObjectSelect}
                 onGlobalToolSelect={handleGlobalToolSelect}
-                onObjectToolSelect={handleObjectToolSelect} activeToolbox={"subtopic"}              
+                onObjectToolSelect={handleObjectToolSelect}
+                activeToolbox="subtopic"
               />
-            ) : selectedTopic && selectedSubtopic ? (
+            ) : (
               <>
                 <div className="mb-4">
                   <button
@@ -84,59 +93,77 @@ const PhysicPage: React.FC = () => {
 
                 <h3 className="text-lg font-bold mb-2">Objects</h3>
                 <Toolbox
-                    simulations={{ objects: getCurrentSimulation().objects, globalTools: [], objectTools: [] }}
-                    selectedSubtopic={selectedSubtopic}
-                    selectedObjects={selectedObjects}
-                    selectedGlobalTools={selectedGlobalTools}
-                    selectedObjectTools={selectedObjectTools}
-                    onSubtopicSelect={handleSubtopicSelect}
-                    onObjectSelect={handleObjectSelect}
-                    onGlobalToolSelect={handleGlobalToolSelect}
-                    onObjectToolSelect={handleObjectToolSelect} activeToolbox={"object"}                  
+                  simulations={{
+                    objects: getCurrentSimulation().objects,
+                    globalTools: [],
+                    objectTools: [],
+                  }}
+                  selectedSubtopic={selectedSubtopic}
+                  selectedObjects={memoizedSelectedObjects}
+                  selectedGlobalTools={selectedGlobalTools}
+                  selectedObjectTools={selectedObjectTools}
+                  onSubtopicSelect={handleSubtopicSelect}
+                  onObjectSelect={handleObjectSelect}
+                  onGlobalToolSelect={handleGlobalToolSelect}
+                  onObjectToolSelect={handleObjectToolSelect}
+                  activeToolbox="object"
                 />
 
                 <h3 className="text-lg font-bold mb-2 mt-4">Global Tools</h3>
                 <Toolbox
-                    simulations={{ objects: [], globalTools: getCurrentSimulation().globalTools, objectTools: [] }}
-                    selectedSubtopic={selectedSubtopic}
-                    selectedObjects={selectedObjects}
-                    selectedGlobalTools={selectedGlobalTools}
-                    selectedObjectTools={selectedObjectTools}
-                    onSubtopicSelect={handleSubtopicSelect}
-                    onObjectSelect={handleObjectSelect}
-                    onGlobalToolSelect={handleGlobalToolSelect}
-                    onObjectToolSelect={handleObjectToolSelect} activeToolbox={"globalTool"}                  
+                  simulations={{
+                    objects: [],
+                    globalTools: getCurrentSimulation().globalTools,
+                    objectTools: [],
+                  }}
+                  selectedSubtopic={selectedSubtopic}
+                  selectedObjects={memoizedSelectedObjects}
+                  selectedGlobalTools={selectedGlobalTools}
+                  selectedObjectTools={selectedObjectTools}
+                  onSubtopicSelect={handleSubtopicSelect}
+                  onObjectSelect={handleObjectSelect}
+                  onGlobalToolSelect={handleGlobalToolSelect}
+                  onObjectToolSelect={handleObjectToolSelect}
+                  activeToolbox="globalTool"
                 />
 
                 <h3 className="text-lg font-bold mb-2 mt-4">Object Tools</h3>
                 <Toolbox
-                    simulations={{ objects: [], globalTools: [], objectTools: getCurrentSimulation().objectTools }}
-                    selectedSubtopic={selectedSubtopic}
-                    selectedObjects={selectedObjects}
-                    selectedGlobalTools={selectedGlobalTools}
-                    selectedObjectTools={selectedObjectTools}
-                    onSubtopicSelect={handleSubtopicSelect}
-                    onObjectSelect={handleObjectSelect}
-                    onGlobalToolSelect={handleGlobalToolSelect}
-                    onObjectToolSelect={handleObjectToolSelect} activeToolbox={"objectTool"}               
+                  simulations={{
+                    objects: [],
+                    globalTools: [],
+                    objectTools: getCurrentSimulation().objectTools,
+                  }}
+                  selectedSubtopic={selectedSubtopic}
+                  selectedObjects={memoizedSelectedObjects}
+                  selectedGlobalTools={selectedGlobalTools}
+                  selectedObjectTools={selectedObjectTools}
+                  onSubtopicSelect={handleSubtopicSelect}
+                  onObjectSelect={handleObjectSelect}
+                  onGlobalToolSelect={handleGlobalToolSelect}
+                  onObjectToolSelect={handleObjectToolSelect}
+                  activeToolbox="objectTool"
                 />
               </>
-            ) : (
-              <p className="text-center">No simulations available for this topic.</p>
             )}
           </div>
         )}
 
         <main className="flex-1 bg-gray-100 flex flex-col min-w-0 overflow-hidden">
-          <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 flex flex-col overflow-hidden" style={{ minHeight: '400px', minWidth: '400px' }}>
             <Canvas
               isRunning={isSimulationRunning}
               resetTrigger={canvasResetTrigger}
-              selectedObjects={selectedObjects}
-              objectAttributes={objectAttributes}
+              selectedObjects={memoizedSelectedObjects}
+              objectAttributes={memoizedObjectAttributes}
               onObjectSelect={handleObjectSelect}
               showCoordinates={showCoordinates}
+              onObjectToolDrop={(toolType, targetObjectId) =>
+                handleObjectToolSelect(toolType, targetObjectId)
+              }
+              onObjectClick={handleCanvasObjectClick}
             />
+
             <SimulationControls
               isRunning={isSimulationRunning}
               onRun={handleRunSimulation}
@@ -145,33 +172,38 @@ const PhysicPage: React.FC = () => {
               showCoordinates={showCoordinates}
               onToggleCoordinates={toggleCoordinates}
               isGravityEnabled={gravity.enabled}
-              onToggleGravity={() => updateGravity({ enabled: !gravity.enabled })}
+              onToggleGravity={() =>
+                updateGravity({ enabled: !gravity.enabled })
+              }
             />
-            <StatusBox
-  selectedObjects={selectedObjects}
-  selectedSupportTools={[...selectedGlobalTools, ...selectedObjectTools]} // gộp vào đây
-  objectAttributes={objectAttributes}
-/>
 
+            <StatusBox
+              selectedObjects={memoizedSelectedObjects}
+              selectedSupportTools={[
+                ...selectedGlobalTools,
+                ...selectedObjectTools,
+              ]}
+              objectAttributes={memoizedObjectAttributes}
+            />
           </div>
         </main>
-      </div>
 
-      {showPopup && popupItem && (
-        <AttributePopup
-          objectName={popupItem.type}
-          attributesConfig={getAttributesConfig(popupItem.type, popupItem.kind)}
-          attributes={
-            popupItem.kind === "globalTool"
-              ? globalToolAttributes[popupItem.id] || {}
-              : popupItem.kind === "objectTool"
-              ? objectToolAttributes[popupItem.id] || {}
-              : objectAttributes[popupItem.id] || {}
-          }
-          onClose={handlePopupClose}
-          onSave={handlePopupSave}
-        />
-      )}
+        {showPopup && popupItem && (
+          <AttributePopup
+            objectName={popupItem.type}
+            attributesConfig={getAttributesConfig(popupItem.type, popupItem.kind)}
+            attributes={
+              popupItem.kind === "object"
+                ? memoizedObjectAttributes[popupItem.id] || {}
+                : popupItem.kind === "globalTool"
+                ? memoizedGlobalToolAttributes[popupItem.id] || {}
+                : memoizedObjectToolAttributes[popupItem.id] || {}
+            }
+            onClose={handlePopupClose}
+            onSave={handlePopupSave}
+          />
+        )}
+      </div>
     </div>
   );
 };

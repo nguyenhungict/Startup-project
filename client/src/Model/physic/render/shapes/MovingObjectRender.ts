@@ -2,7 +2,6 @@
 import Konva from "konva";
 import type { ObjectRendererInterface, RenderableObject, RenderContext } from "../types";
 
-
 export class MovingObjectRenderer implements ObjectRendererInterface {
   render(
     obj: RenderableObject,
@@ -12,7 +11,7 @@ export class MovingObjectRenderer implements ObjectRendererInterface {
     const size = obj.size ?? 20;
     const color = obj.color ?? "blue";
 
-    // Vẽ hình tròn đại diện object
+    // Draw circle representing the object
     const shape = new Konva.Circle({
       x: obj.x,
       y: obj.y,
@@ -21,15 +20,21 @@ export class MovingObjectRenderer implements ObjectRendererInterface {
       stroke: "black",
       strokeWidth: 1,
     });
+    shape.setAttr("modelId", obj.id); // Add modelId for drop logic
     layer.add(shape);
 
-    // Vẽ nhãn tên object
-    const label = new Konva.Text({
-      x: obj.x + size / 2 + 5,
-      y: obj.y - size / 2,
-      fontSize: 12,
-      fill: "black",
-    });
-    layer.add(label);
+    // Draw object label (optional, simplified)
+    try {
+      const label = new Konva.Text({
+        x: obj.x + size / 2 + 5,
+        y: obj.y - size / 2,
+        text: obj.id.substring(0, 8), // Shortened ID for clarity
+        fontSize: 12,
+        fill: "black",
+      });
+      layer.add(label);
+    } catch (err) {
+      console.error("Error rendering label for object:", obj.id, err);
+    }
   }
 }

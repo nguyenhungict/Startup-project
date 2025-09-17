@@ -5,6 +5,9 @@ import type { Attribute } from "../../data/physicConfig";
 export type ToolKind = "object" | "globalTool" | "objectTool";
 export type AttributeValue = number | string | boolean | { x: number; y: number };
 export type AttributeMap = Record<string, AttributeValue>;
+// Add this at the bottom or top of your Types.ts
+export type DragItemType = "object" | "objectTool";
+
 
 export interface PhysicsPageLogic {
   selectedTopic: string | null;
@@ -28,6 +31,7 @@ export interface PhysicsPageLogic {
   handleTopicSelect: (topic: string) => void;
   handleSubtopicSelect: (subtopic: string | null) => void;
   handleObjectSelect: (object: string) => void;
+
   handleGlobalToolSelect: (tool: string) => void;
   handleObjectToolSelect: (tool: string, targetObjectId?: string) => void;
 

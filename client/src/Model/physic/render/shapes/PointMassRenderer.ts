@@ -15,6 +15,7 @@ export class PointMassRenderer implements ObjectRendererInterface {
       strokeWidth: 1,
       rotation: obj.angle ?? 0,
     });
+    shape.setAttr("modelId", obj.id); // Add modelId for drop logic
     layer.add(shape);
   }
 }

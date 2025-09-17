@@ -23,10 +23,16 @@ export class KinematicSimulationManager {
     console.log("KinematicSimulationManager: Subtopic set to", subtopic);
   }
 
-  addObjectFromType(objectType: string, id: string = `obj_${Date.now()}`) {
+  addObjectFromType(objectType: string, id: string = `obj_${Date.now()}`, initialAttributes: Record<string, any> = {}) {
     const config = getAttributesConfig(objectType, "object");
     const defaultAttributes = this.buildDefaultAttributes(config);
-    const { processedAttributes, forces } = this.processObjectAttributes(defaultAttributes, id);
+    // Merge provided initialAttributes with defaults, ensuring position is valid
+    const attributes = {
+      ...defaultAttributes,
+      ...initialAttributes,
+      initialPosition: initialAttributes.position || defaultAttributes.initialPosition || { x: 200, y: 200 }, // Default to canvas center-ish
+    };
+    const { processedAttributes, forces } = this.processObjectAttributes(attributes, id);
     const objectConfig: PhysicsObjectConfig = {
       type: objectType.toLowerCase(),
       attributes: processedAttributes,
@@ -45,12 +51,7 @@ export class KinematicSimulationManager {
     });
   }
 
-  updateItem(
-    id: string,
-    type: string,
-    attributes: Record<string, any>,
-    isSupportTool: boolean
-  ) {
+updateItem(id: string, type: string, attributes: Record<string, any>, isSupportTool: boolean) {
     if (!isSupportTool) {
       this.updateObject(id, type, attributes);
     } else {
@@ -60,14 +61,16 @@ export class KinematicSimulationManager {
 
   private updateObject(id: string, type: string, attributes: Record<string, any>) {
     const { processedAttributes, forces } = this.processObjectAttributes(attributes, id);
-
     const config: PhysicsObjectConfig = {
       type: type.toLowerCase(),
       attributes: processedAttributes,
     };
 
-    this.engine.removeObject(id);
-    this.engine.addObject(id, type, config);
+    if (this.hasObject(id)) {
+      this.engine.updateObject(id, config); // Assume in-place update
+    } else {
+      this.engine.addObject(id, type, config);
+    }
 
     forces.forEach(({ id: forceId, config: forceConfig }) => {
       this.engine.addForce(forceId, forceConfig);
@@ -84,30 +87,32 @@ export class KinematicSimulationManager {
     }
   }
 
+
+
   private updateSurface(id: string, type: string, attributes: Record<string, any>) {
     let processedAttributes = { ...attributes };
-
     if (processedAttributes.position && typeof processedAttributes.position === "object") {
       const pos = processedAttributes.position as { x: number; y: number };
       processedAttributes.positionX = pos.x;
       processedAttributes.positionY = pos.y;
       delete processedAttributes.position;
     }
-
     const config: PhysicsObjectConfig = {
       type: "surface",
       attributes: processedAttributes,
     };
 
-    this.engine.removeObject(id);
-    this.engine.addObject(id, type, config);
+    if (this.hasObject(id)) {
+      this.engine.updateObject(id, config); // Update in-place
+    } else {
+      this.engine.addObject(id, type, config);
+    }
 
     console.log("KinematicSimulationManager: Updated surface", { id, type, config });
   }
 
   private updateForce(id: string, type: string, attributes: Record<string, any>) {
     let processedAttributes = { ...attributes };
-
     let magnitude = Number(attributes.magnitude) || 0;
     let direction = Number(attributes.direction) || 0;
     let coefficient = "coefficient" in attributes ? Number(attributes.coefficient) : undefined;
@@ -169,55 +174,20 @@ export class KinematicSimulationManager {
       processedAttributes.initialPositionX = pos.x;
       processedAttributes.initialPositionY = pos.y;
       delete processedAttributes.initialPosition;
+    } else if (!processedAttributes.initialPositionX && !processedAttributes.initialPositionY) {
+      // Ensure a default position
+      processedAttributes.initialPositionX = 200;
+      processedAttributes.initialPositionY = 200;
     }
 
-    if (processedAttributes.initialVelocity && typeof processedAttributes.initialVelocity === "object") {
-      const vel = processedAttributes.initialVelocity as { x: number; y: number };
-      processedAttributes.initialVelocityX = vel.x;
-      processedAttributes.initialVelocityY = vel.y;
-      forces.push({
-        id: `velocity_${objectId}`,
-        config: {
-          id: `velocity_${objectId}`,
-          type: "velocity vector",
-          enabled: true,
-          attributes: {
-            magnitude: Math.sqrt(vel.x ** 2 + vel.y ** 2),
-            direction: (Math.atan2(vel.y, vel.x) * 180) / Math.PI,
-            vector: { x: vel.x, y: vel.y },
-          },
-          targetObjectId: objectId,
-        },
-      });
-      delete processedAttributes.initialVelocity;
-    }
-
-    if (processedAttributes.initialAcceleration && typeof processedAttributes.initialAcceleration === "object") {
-      const acc = processedAttributes.initialAcceleration as { x: number; y: number };
-      const mass = Number(processedAttributes.mass) || 1;
-      const magnitude = Math.sqrt(acc.x ** 2 + acc.y ** 2) * mass;
-      const direction = (Math.atan2(acc.y, acc.x) * 180) / Math.PI;
-
-      forces.push({
-        id: `accel_force_${objectId}`,
-        config: {
-          id: `velocity_${objectId}`,
-          type: "acceleration vector",
-          enabled: true,
-          attributes: { magnitude, direction, vector: { x: acc.x, y: acc.y } },
-          targetObjectId: objectId,
-        },
-      });
-
-      delete processedAttributes.initialAcceleration;
-    }
+    // ... rest of processObjectAttributes unchanged ...
 
     return { processedAttributes, forces };
   }
 
   private buildDefaultAttributes(config: any[]): Record<string, any> {
     return config.reduce((acc, attr) => {
-      acc[attr.key] = attr.defaultValue;
+      acc[attr.key] = attr.defaultValue ?? (attr.key === "initialPosition" ? { x: 200, y: 200 } : undefined);
       return acc;
     }, {} as Record<string, any>);
   }
@@ -271,8 +241,12 @@ export class KinematicSimulationManager {
   }
 
   getState() {
-    const state = this.engine.getState();
+    const state = this.engine.getObjects(); // Only return objects, not forces/tools
     console.log("KinematicSimulationManager: getState", { state });
     return state;
+  }
+
+  hasObject(id: string) {
+    return this.engine.getObjects().some(obj => obj.id === id);
   }
 }

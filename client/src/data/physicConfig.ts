@@ -40,6 +40,9 @@ export const objectToolAttributeConfigs: Record<string, Attribute[]> = {
   VelocityVector: [
     { name: "Vector", key: "vector", type: "position", defaultValue: { x: 0, y: 0 }, min: -1000, max: 1000, step: 1 },
   ],
+  AccelerationVector: [
+    { name: "Vector", key: "vector", type: "position", defaultValue: { x: 0, y: 0 }, min: -1000, max: 1000, step: 1 },
+  ],
   AppliedForceVector: [
     { name: "Enabled", key: "enabled", type: "boolean", defaultValue: true },
     { name: "Magnitude", key: "magnitude", type: "number", defaultValue: 10, min: 0, max: 1000, step: 0.1 },
