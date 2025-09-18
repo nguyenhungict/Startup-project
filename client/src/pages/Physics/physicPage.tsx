@@ -41,6 +41,7 @@ const PhysicPage: React.FC = () => {
     gravity,
     updateGravity,
     handleCanvasObjectClick,
+    setPendingToolType
   } = useSimulation();
 
   const memoizedSelectedObjects = useMemo(() => selectedObjects, [selectedObjects]);
@@ -76,7 +77,7 @@ const PhysicPage: React.FC = () => {
                 onSubtopicSelect={handleSubtopicSelect}
                 onObjectSelect={handleObjectSelect}
                 onGlobalToolSelect={handleGlobalToolSelect}
-                onObjectToolSelect={handleObjectToolSelect}
+                setPendingToolType={setPendingToolType}
                 activeToolbox="subtopic"
               />
             ) : (
@@ -105,7 +106,7 @@ const PhysicPage: React.FC = () => {
                   onSubtopicSelect={handleSubtopicSelect}
                   onObjectSelect={handleObjectSelect}
                   onGlobalToolSelect={handleGlobalToolSelect}
-                  onObjectToolSelect={handleObjectToolSelect}
+                  setPendingToolType={setPendingToolType}
                   activeToolbox="object"
                 />
 
@@ -123,7 +124,7 @@ const PhysicPage: React.FC = () => {
                   onSubtopicSelect={handleSubtopicSelect}
                   onObjectSelect={handleObjectSelect}
                   onGlobalToolSelect={handleGlobalToolSelect}
-                  onObjectToolSelect={handleObjectToolSelect}
+                  setPendingToolType={setPendingToolType}
                   activeToolbox="globalTool"
                 />
 
@@ -141,7 +142,7 @@ const PhysicPage: React.FC = () => {
                   onSubtopicSelect={handleSubtopicSelect}
                   onObjectSelect={handleObjectSelect}
                   onGlobalToolSelect={handleGlobalToolSelect}
-                  onObjectToolSelect={handleObjectToolSelect}
+                  setPendingToolType={setPendingToolType}
                   activeToolbox="objectTool"
                 />
               </>

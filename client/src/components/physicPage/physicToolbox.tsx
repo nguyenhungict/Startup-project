@@ -15,7 +15,7 @@ interface ToolboxProps {
   onSubtopicSelect: (subtopic: string | null) => void;
   onObjectSelect: (item: string) => void;           // <- used for creating objects
   onGlobalToolSelect: (item: string) => void;
-  onObjectToolSelect: (item: string, targetObjectId?: string) => void;
+  setPendingToolType: (item: string) => void;
   activeToolbox: "subtopic" | "object" | "globalTool" | "objectTool";
 }
 
@@ -28,7 +28,7 @@ const Toolbox: React.FC<ToolboxProps> = ({
   onSubtopicSelect,
   onObjectSelect,
   onGlobalToolSelect,
-  onObjectToolSelect,
+  setPendingToolType,
   activeToolbox,
 }) => {
   const items =
@@ -55,8 +55,7 @@ const Toolbox: React.FC<ToolboxProps> = ({
     } else if (activeToolbox === "globalTool") {
       onGlobalToolSelect(item);
     } else if (activeToolbox === "objectTool") {
-      const targetObjectId = selectedObjects[0]?.id;
-      onObjectToolSelect(item, targetObjectId);
+      setPendingToolType(item);
     } else {
       onSubtopicSelect(item);
     }

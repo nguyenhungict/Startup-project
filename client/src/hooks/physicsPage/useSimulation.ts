@@ -64,6 +64,8 @@ export const useSimulation = (): PhysicsPageLogic & {
   handleCanvasObjectClick: (objectId: string) => void;
   selectedCanvasObjectId: string | null;
   formAttributes: Record<string, any>;
+  pendingToolType: string | null;                        // ⬅️ add this
+  setPendingToolType: (tool: string | null) => void
 } => {
   const managerRef = useRef<KinematicSimulationManager | null>(null);
   if (!managerRef.current) {
@@ -80,12 +82,14 @@ export const useSimulation = (): PhysicsPageLogic & {
   const [selectedCanvasObjectId, setSelectedCanvasObjectId] = useState<string | null>(null);
   const [globalTools, setGlobalTools] = useState<SupportTool[]>([]);
   const [objectTools, setObjectTools] = useState<SupportTool[]>([]);
-  const { selectedId, selectObject, clearSelection } = useCanvasSelection();
+  const { selectedId, selectObject, clearSelection, } = useCanvasSelection();
 
   // Attribute states
   const [objectAttributes, setObjectAttributes] = useState<Record<string, any>>({});
   const [globalToolAttributes, setGlobalToolAttributes] = useState<Record<string, any>>({});
   const [objectToolAttributes, setObjectToolAttributes] = useState<Record<string, any>>({});
+
+  const [pendingToolType, setPendingToolType] = useState<string | null>(null);
 
   // Popup state for attribute editing
   const [showPopup, setShowPopup] = useState(false);
@@ -189,13 +193,24 @@ export const useSimulation = (): PhysicsPageLogic & {
   const handleCanvasObjectClick = useCallback((objectId: string) => {
     console.log("handleCanvasObjectClick", { objectId, objectAttributes, canvasObjects });
     const obj = canvasObjects.find(o => o.id === objectId);
-    if (obj) {
+    if (pendingToolType) {
+      if (obj) {
+      selectObject(objectId);
+      handleObjectToolSelect(pendingToolType, objectId);
+      setPendingToolType(null);
+    } else {
+      console.warn("handleCanvasObjectClick: Object not found", { objectId });
+      }   
+    } else {
+      if (obj) {
       selectObject(objectId);
       setPopupItem({ id: objectId, type: obj.type, kind: "object" });
       setShowPopup(true);
     } else {
       console.warn("handleCanvasObjectClick: Object not found", { objectId });
+      }  
     }
+        
   }, [canvasObjects, objectAttributes, selectObject]);
 
   // Popup handlers
@@ -328,5 +343,8 @@ export const useSimulation = (): PhysicsPageLogic & {
     handleCanvasObjectClick,
     selectedCanvasObjectId,
     formAttributes,
+
+    pendingToolType,
+  setPendingToolType,
   };
 };
