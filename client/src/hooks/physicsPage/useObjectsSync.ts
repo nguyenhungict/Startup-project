@@ -1,12 +1,12 @@
 // src/hooks/physicsPage/useObjectsSync.ts
 import { useEffect, useRef } from "react";
-import type { SupportTool } from "./useSimulation";
+import type { supportTool } from "./useSimulation";
 
 export const useObjectsSync = (
   manager: any,
   selectedObjects: { id: string; type: string }[],
   selectedGlobalTools: { id: string; type: string }[],
-  selectedObjectTools: SupportTool[],
+  selectedObjectTools: supportTool[],
   objectAttributes: Record<string, any>,
   globalToolAttributes: Record<string, any>,
   objectToolAttributes: Record<string, any>,

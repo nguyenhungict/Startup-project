@@ -5,9 +5,7 @@ import type { Attribute } from "../../data/physicConfig";
 export type ToolKind = "object" | "globalTool" | "objectTool";
 export type AttributeValue = number | string | boolean | { x: number; y: number };
 export type AttributeMap = Record<string, AttributeValue>;
-// Add this at the bottom or top of your Types.ts
 export type DragItemType = "object" | "objectTool";
-
 
 export interface PhysicsPageLogic {
   selectedTopic: string | null;
@@ -36,8 +34,16 @@ export interface PhysicsPageLogic {
   handleObjectToolSelect: (tool: string, targetObjectId?: string) => void;
 
   handlePopupClose: () => void;
-  handlePopupSave: (attributes: AttributeMap) => void;
-  handleAttributeChange: (key: string, value: AttributeValue | { x: string | number; y: string | number }) => void;
+  handlePopupSave: (data: {
+    object: AttributeMap; // Changed from 'attributes' to 'object'
+    tools: { id: string; attributes: AttributeMap }[];
+  }) => void;
+
+  handleAttributeChange: (
+    key: string,
+    value: AttributeValue | { x: string | number; y: string | number },
+    section: string // Added 'section' parameter
+  ) => void;
 
   handleRunSimulation: () => void;
   handleStopSimulation: () => void;

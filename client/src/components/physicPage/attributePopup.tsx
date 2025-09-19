@@ -6,9 +6,18 @@ import type { Attribute } from "../../data/physicConfig";
 interface AttributePopupProps {
   objectName: string;
   attributesConfig: Attribute[];
-  attributes: Record<string, number | string | boolean | { x: number | string; y: number | string }>;
+  attributes: Record<string, any>;
+  tools?: {
+    id: string;
+    name: string;
+    attributesConfig: Attribute[];
+    attributes: Record<string, any>;
+  }[];
   onClose: () => void;
-  onSave: (attributes: Record<string, number | string | boolean | { x: number; y: number }>) => void;
+  onSave: (data: {
+    attributes: Record<string, number | string | boolean | { x: number; y: number }>;
+    tools: { id: string; attributes: Record<string, number | string | boolean | { x: number; y: number }> }[];
+  }) => void;
 }
 
 type ParsedAttributes = Record<string, number | string | boolean | { x: number; y: number }>;
@@ -17,32 +26,37 @@ const AttributePopup: React.FC<AttributePopupProps> = ({
   objectName,
   attributesConfig,
   attributes: initialAttributes,
+  tools = [],
   onClose,
   onSave,
 }) => {
-  // Use local state for form data
-  const [formData, setFormData] = useState<Record<string, number | string | boolean | { x: number | string; y: number | string }>>({});
+  const [formData, setFormData] = useState<Record<string, any>>({ object: {}, tools: [] });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Initialize form data when component mounts or attributes change
   useEffect(() => {
-    const initData: Record<string, number | string | boolean | { x: number | string; y: number | string }> = {};
-    
+    console.log("AttributePopup useEffect", { initialAttributes, tools });
+    const initObj: ParsedAttributes = {};
     attributesConfig.forEach((attr) => {
-      if (initialAttributes[attr.key] !== undefined) {
-        initData[attr.key] = initialAttributes[attr.key];
-      } else {
-        initData[attr.key] = attr.defaultValue;
-      }
+      const value = initialAttributes[attr.key] ?? attr.defaultValue;
+      initObj[attr.key] = attr.type === "number" ? Number(value) || attr.defaultValue : value;
     });
-    
-    setFormData(initData);
-  }, [attributesConfig, initialAttributes]);
 
-  const validateAttribute = (attr: Attribute, value: number | string | boolean | { x: number | string; y: number | string }, isBlurOrSave: boolean = false) => {
+    const initTools: { id: string; attributes: ParsedAttributes }[] = tools.map((t) => {
+      const initT: ParsedAttributes = {};
+      t.attributesConfig.forEach((a) => {
+        const value = t.attributes[a.key] ?? a.defaultValue;
+        initT[a.key] = a.type === "number" ? Number(value) || a.defaultValue : value;
+      });
+      return { id: t.id, attributes: initT };
+    });
+
+    setFormData({ object: initObj, tools: initTools });
+  }, [attributesConfig, initialAttributes, tools]);
+
+  const validateAttribute = (attr: Attribute, value: any, isBlurOrSave: boolean = false) => {
     if (attr.type === "number") {
       if (typeof value === "string") {
-        if (value === "" && !isBlurOrSave) return ""; // Allow empty during typing
+        if (value === "" && !isBlurOrSave) return "";
         if (value === "") return "Value cannot be empty";
         const numValue = Number(value);
         if (isNaN(numValue)) return "Invalid number";
@@ -51,7 +65,7 @@ const AttributePopup: React.FC<AttributePopupProps> = ({
       }
     }
     if (attr.type === "position" && typeof value === "object" && "x" in value && "y" in value) {
-      if ((value.x === "" || value.y === "") && !isBlurOrSave) return ""; // Allow empty during typing
+      if ((value.x === "" || value.y === "") && !isBlurOrSave) return "";
       if (value.x === "" || value.y === "") return "Position values cannot be empty";
       const x = typeof value.x === "string" ? Number(value.x) : value.x;
       const y = typeof value.y === "string" ? Number(value.y) : value.y;
@@ -62,82 +76,228 @@ const AttributePopup: React.FC<AttributePopupProps> = ({
     return "";
   };
 
-  const handleChange = (key: string, value: number | string | boolean | { x: number | string; y: number | string }) => {
-    setFormData((prev) => ({ ...prev, [key]: value }));
-    
-    const attr = attributesConfig.find((a) => a.key === key);
+  const handleChange = (key: string, value: any, section: string = "object") => {
+    setFormData((prev) => {
+      console.log("handleChange", { key, value, section, prev });
+      if (section === "object") {
+        const newState = { ...prev, object: { ...prev.object, [key]: value } };
+        console.log("Updated formData (object)", newState);
+        return newState;
+      } else {
+        const toolIndex = parseInt(section.split("-")[1]);
+        const newTools = [...prev.tools];
+        newTools[toolIndex] = {
+          ...newTools[toolIndex],
+          attributes: { ...newTools[toolIndex].attributes, [key]: value },
+        };
+        const newState = { ...prev, tools: newTools };
+        console.log("Updated formData (tools)", newState);
+        return newState;
+      }
+    });
+
+    const attr = section === "object"
+      ? attributesConfig.find((a) => a.key === key)
+      : tools[parseInt(section.split("-")[1])]?.attributesConfig.find((a) => a.key === key);
+
     if (attr) {
       const error = validateAttribute(attr, value);
-      setErrors((prev) => ({ ...prev, [key]: error }));
+      setErrors((prev) => ({ ...prev, [`${section}-${key}`]: error }));
     }
   };
 
-  const handlePositionChange = (key: string, axis: "x" | "y", inputValue: string) => {
-    const currentPosition = (formData[key] as { x: number | string; y: number | string } | undefined) || { x: "", y: "" };
+  const handlePositionChange = (key: string, axis: "x" | "y", inputValue: string, section: string = "object") => {
+    const currentPosition = section === "object"
+      ? (formData.object[key] as { x: number | string; y: number | string } | undefined) || { x: "", y: "" }
+      : (formData.tools[parseInt(section.split("-")[1])]?.attributes[key] as { x: number | string; y: number | string } | undefined) || { x: "", y: "" };
     const newPosition = { ...currentPosition, [axis]: inputValue };
-    handleChange(key, newPosition);
+    handleChange(key, newPosition, section);
   };
 
-  const handleNumberBlur = (key: string, value: string) => {
+  const handleNumberBlur = (key: string, value: string, section: string = "object") => {
     const numValue = Number(value);
-    const attr = attributesConfig.find((a) => a.key === key);
+    const attr = section === "object"
+      ? attributesConfig.find((a) => a.key === key)
+      : tools[parseInt(section.split("-")[1])]?.attributesConfig.find((a) => a.key === key);
     const defaultValue = attr?.defaultValue ?? 0;
     const finalValue = value === "" || isNaN(numValue) ? defaultValue : numValue;
-    handleChange(key, finalValue);
+    handleChange(key, finalValue, section);
     const error = validateAttribute(attr!, finalValue, true);
-    setErrors((prev) => ({ ...prev, [key]: error }));
+    setErrors((prev) => ({ ...prev, [`${section}-${key}`]: error }));
   };
 
-  const handlePositionBlur = (key: string, axis: "x" | "y", value: string) => {
+  const handlePositionBlur = (key: string, axis: "x" | "y", value: string, section: string = "object") => {
     const numValue = Number(value);
-    const currentPosition = (formData[key] as { x: number | string; y: number | string } | undefined) || { x: "", y: "" };
-    const attr = attributesConfig.find((a) => a.key === key);
+    const currentPosition = section === "object"
+      ? (formData.object[key] as { x: number | string; y: number | string } | undefined) || { x: "", y: "" }
+      : (formData.tools[parseInt(section.split("-")[1])]?.attributes[key] as { x: number | string; y: number | string } | undefined) || { x: "", y: "" };
+    const attr = section === "object"
+      ? attributesConfig.find((a) => a.key === key)
+      : tools[parseInt(section.split("-")[1])]?.attributesConfig.find((a) => a.key === key);
     const defaultPos = (attr?.defaultValue as { x: number; y: number }) ?? { x: 0, y: 0 };
     const newPosition = {
       ...currentPosition,
       [axis]: value === "" || isNaN(numValue) ? defaultPos[axis] : numValue,
     };
-    handleChange(key, newPosition);
+    handleChange(key, newPosition, section);
     const error = validateAttribute(attr!, newPosition, true);
-    setErrors((prev) => ({ ...prev, [key]: error }));
+    setErrors((prev) => ({ ...prev, [`${section}-${key}`]: error }));
   };
 
   const hasErrors = Object.values(errors).some((error) => error !== "");
 
   const handleSave = () => {
-    const parsedAttributes = Object.fromEntries(
-      Object.entries(formData).map(([key, value]) => {
-        const attr = attributesConfig.find((a) => a.key === key);
-        if (attr?.type === "number" && typeof value === "string") {
+    const parsedAttributes: { attributes: ParsedAttributes; tools: { id: string; attributes: ParsedAttributes }[] } = {
+      attributes: {}, // Changed from 'object' to 'attributes' to match onSave type
+      tools: [],
+    };
+
+    // Validate and parse object attributes
+    attributesConfig.forEach((attr) => {
+      const value = formData.object[attr.key];
+      let parsedValue: number | string | boolean | { x: number; y: number } = value;
+      if (attr.type === "number" && typeof value === "string") {
+        const numValue = Number(value);
+        parsedValue = value === "" || isNaN(numValue) ? attr.defaultValue : numValue;
+      } else if (attr.type === "position" && typeof value === "object" && "x" in value && "y" in value) {
+        const defaultPos = attr.defaultValue as { x: number; y: number };
+        parsedValue = {
+          x: typeof value.x === "string" ? (value.x === "" || isNaN(Number(value.x)) ? defaultPos.x : Number(value.x)) : value.x,
+          y: typeof value.y === "string" ? (value.y === "" || isNaN(Number(value.y)) ? defaultPos.y : Number(value.y)) : value.y,
+        };
+      }
+      parsedAttributes.attributes[attr.key] = parsedValue;
+      const error = validateAttribute(attr, parsedValue, true);
+      if (error) setErrors((prev) => ({ ...prev, [`object-${attr.key}`]: error }));
+    });
+
+    // Validate and parse tool attributes
+    formData.tools.forEach((tool: { id: string; attributes: ParsedAttributes }, index: number) => {
+      const toolConfig = tools[index]?.attributesConfig ?? [];
+      const parsedToolAttrs: ParsedAttributes = {};
+      toolConfig.forEach((attr) => {
+        const value = tool.attributes[attr.key];
+        let parsedValue: number | string | boolean | { x: number; y: number } = value;
+        if (attr.type === "number" && typeof value === "string") {
           const numValue = Number(value);
-          return [key, value === "" || isNaN(numValue) ? attr.defaultValue : numValue];
-        }
-        if (attr?.type === "position" && typeof value === "object" && "x" in value && "y" in value) {
+          parsedValue = value === "" || isNaN(numValue) ? attr.defaultValue : numValue;
+        } else if (attr.type === "position" && typeof value === "object" && "x" in value && "y" in value) {
           const defaultPos = attr.defaultValue as { x: number; y: number };
-          const parsedPosition = {
+          parsedValue = {
             x: typeof value.x === "string" ? (value.x === "" || isNaN(Number(value.x)) ? defaultPos.x : Number(value.x)) : value.x,
             y: typeof value.y === "string" ? (value.y === "" || isNaN(Number(value.y)) ? defaultPos.y : Number(value.y)) : value.y,
           };
-          return [key, parsedPosition as { x: number; y: number }];
         }
-        return [key, value];
-      })
-    ) as ParsedAttributes;
-
-    // Validate all fields before saving
-    const newErrors: Record<string, string> = {};
-    attributesConfig.forEach((attr) => {
-      const value = parsedAttributes[attr.key];
-      const error = validateAttribute(attr, value, true);
-      if (error) newErrors[attr.key] = error;
+        parsedToolAttrs[attr.key] = parsedValue;
+        const error = validateAttribute(attr, parsedValue, true);
+        if (error) setErrors((prev) => ({ ...prev, [`tool-${index}-${attr.key}`]: error }));
+      });
+      parsedAttributes.tools.push({ id: tool.id, attributes: parsedToolAttrs });
     });
 
-    setErrors(newErrors);
-
-    if (Object.values(newErrors).every((error) => error === "")) {
+    if (Object.values(errors).every((error) => error === "")) {
+      console.log("Saving attributes", parsedAttributes);
       onSave(parsedAttributes);
     }
   };
+
+  const renderFields = (
+    fields: Attribute[],
+    values: ParsedAttributes,
+    onChange: (key: string, value: any, section: string) => void,
+    section: string = "object"
+  ) => (
+    <div className="space-y-4">
+      {fields.map((attr) => (
+        <div key={attr.key} className="grid grid-cols-2 gap-2 items-center">
+          <label className="text-sm font-medium text-gray-700">{attr.name}</label>
+          <div className="relative">
+            {attr.type === "number" ? (
+              <input
+                type="number"
+                value={(values[attr.key] as number | string) ?? ""}
+                onChange={(e) => onChange(attr.key, e.target.value, section)}
+                onBlur={(e) => handleNumberBlur(attr.key, e.target.value, section)}
+                min={attr.min}
+                max={attr.max}
+                step={attr.step}
+                className={`w-full border border-gray-300 rounded p-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  errors[`${section}-${attr.key}`] ? "border-red-500" : ""
+                }`}
+              />
+            ) : attr.type === "color" ? (
+              <input
+                type="color"
+                value={values[attr.key] as string}
+                onChange={(e) => onChange(attr.key, e.target.value, section)}
+                className="border border-gray-300 rounded p-1 h-8 w-full"
+              />
+            ) : attr.type === "boolean" ? (
+              <input
+                type="checkbox"
+                checked={values[attr.key] as boolean}
+                onChange={(e) => onChange(attr.key, e.target.checked, section)}
+                className="h-5 w-5 text-blue-500 focus:ring-blue-500 border-gray-300 rounded"
+              />
+            ) : attr.type === "string" ? (
+              <input
+                type="text"
+                value={values[attr.key] as string}
+                onChange={(e) => onChange(attr.key, e.target.value, section)}
+                className={`w-full border border-gray-300 rounded p-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  errors[`${section}-${attr.key}`] ? "border-red-500" : ""
+                }`}
+              />
+            ) : attr.type === "select" && attr.options ? (
+              <select
+                value={values[attr.key] as string}
+                onChange={(e) => onChange(attr.key, e.target.value, section)}
+                className="w-full border border-gray-300 rounded p-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {attr.options.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            ) : attr.type === "position" ? (
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  value={((values[attr.key] as { x: number | string; y: number | string } | undefined)?.x ?? "")}
+                  onChange={(e) => handlePositionChange(attr.key, "x", e.target.value, section)}
+                  onBlur={(e) => handlePositionBlur(attr.key, "x", e.target.value, section)}
+                  min={attr.min}
+                  max={attr.max}
+                  step={attr.step}
+                  className={`border border-gray-300 rounded p-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-1/2 ${
+                    errors[`${section}-${attr.key}`] ? "border-red-500" : ""
+                  }`}
+                  placeholder="X"
+                />
+                <input
+                  type="number"
+                  value={((values[attr.key] as { x: number | string; y: number | string } | undefined)?.y ?? "")}
+                  onChange={(e) => handlePositionChange(attr.key, "y", e.target.value, section)}
+                  onBlur={(e) => handlePositionBlur(attr.key, "y", e.target.value, section)}
+                  min={attr.min}
+                  max={attr.max}
+                  step={attr.step}
+                  className={`border border-gray-300 rounded p-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-1/2 ${
+                    errors[`${section}-${attr.key}`] ? "border-red-500" : ""
+                  }`}
+                  placeholder="Y"
+                />
+              </div>
+            ) : null}
+            {errors[`${section}-${attr.key}`] && (
+              <p className="text-red-500 text-xs mt-1">{errors[`${section}-${attr.key}`]}</p>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 
   return (
     <div className="fixed top-0 right-0 h-full w-80 bg-white shadow-2xl p-6 z-50 overflow-y-auto">
@@ -147,96 +307,23 @@ const AttributePopup: React.FC<AttributePopupProps> = ({
           <XMarkIcon className="h-6 w-6" />
         </button>
       </div>
-      <div className="space-y-4">
-        {attributesConfig.map((attr) => (
-          <div key={attr.key} className="grid grid-cols-2 gap-2 items-center">
-            <label className="text-sm font-medium text-gray-700">{attr.name}</label>
-            <div className="relative">
-              {attr.type === "number" ? (
-                <input
-                  type="number"
-                  value={(formData[attr.key] as number | string) ?? ""}
-                  onChange={(e) => handleChange(attr.key, e.target.value)}
-                  onBlur={(e) => handleNumberBlur(attr.key, e.target.value)}
-                  min={attr.min}
-                  max={attr.max}
-                  step={attr.step}
-                  className={`w-full border border-gray-300 rounded p-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors[attr.key] ? "border-red-500" : ""
-                  }`}
-                />
-              ) : attr.type === "color" ? (
-                <input
-                  type="color"
-                  value={formData[attr.key] as string}
-                  onChange={(e) => handleChange(attr.key, e.target.value)}
-                  className="border border-gray-300 rounded p-1 h-8 w-full"
-                />
-              ) : attr.type === "boolean" ? (
-                <input
-                  type="checkbox"
-                  checked={formData[attr.key] as boolean}
-                  onChange={(e) => handleChange(attr.key, e.target.checked)}
-                  className="h-5 w-5 text-blue-500 focus:ring-blue-500 border-gray-300 rounded"
-                />
-              ) : attr.type === "string" ? (
-                <input
-                  type="text"
-                  value={formData[attr.key] as string}
-                  onChange={(e) => handleChange(attr.key, e.target.value)}
-                  className={`w-full border border-gray-300 rounded p-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors[attr.key] ? "border-red-500" : ""
-                  }`}
-                />
-              ) : attr.type === "select" && attr.options ? (
-                <select
-                  value={formData[attr.key] as string}
-                  onChange={(e) => handleChange(attr.key, e.target.value)}
-                  className="w-full border border-gray-300 rounded p-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  {attr.options.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
-              ) : attr.type === "position" ? (
-                <div className="flex gap-2">
-                  <input
-                    type="number"
-                    value={((formData[attr.key] as { x: number | string; y: number | string } | undefined)?.x ?? "")}
-                    onChange={(e) => handlePositionChange(attr.key, "x", e.target.value)}
-                    onBlur={(e) => handlePositionBlur(attr.key, "x", e.target.value)}
-                    min={attr.min}
-                    max={attr.max}
-                    step={attr.step}
-                    className={`border border-gray-300 rounded p-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-1/2 ${
-                      errors[attr.key] ? "border-red-500" : ""
-                    }`}
-                    placeholder="X"
-                  />
-                  <input
-                    type="number"
-                    value={((formData[attr.key] as { x: number | string; y: number | string } | undefined)?.y ?? "")}
-                    onChange={(e) => handlePositionChange(attr.key, "y", e.target.value)}
-                    onBlur={(e) => handlePositionBlur(attr.key, "y", e.target.value)}
-                    min={attr.min}
-                    max={attr.max}
-                    step={attr.step}
-                    className={`border border-gray-300 rounded p-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-1/2 ${
-                      errors[attr.key] ? "border-red-500" : ""
-                    }`}
-                    placeholder="Y"
-                  />
-                </div>
-              ) : null}
-              {errors[attr.key] && (
-                <p className="text-red-500 text-xs mt-1">{errors[attr.key]}</p>
-              )}
+
+      {/* Object attributes */}
+      {renderFields(attributesConfig, formData.object, handleChange, "object")}
+
+      {/* Attached Tools */}
+      {formData.tools.length > 0 && (
+        <div className="mt-6">
+          <h3 className="text-md font-semibold text-gray-800 mb-2">Attached Tools</h3>
+          {formData.tools.map((tool: { id: string; attributes: ParsedAttributes }, index: number) => (
+            <div key={tool.id} className="border border-gray-200 rounded p-2 mb-3">
+              <h4 className="text-sm font-medium text-gray-700 mb-2">{tools[index]?.name || "Tool"}</h4>
+              {renderFields(tools[index]?.attributesConfig ?? [], tool.attributes, handleChange, `tool-${index}`)}
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
+
       <div className="mt-6 flex justify-end space-x-2">
         <button
           onClick={onClose}

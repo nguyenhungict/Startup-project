@@ -69,31 +69,31 @@ export class PointMassKinematic implements PhysicsObject {
     this.size = config.attributes.size;
     this.color = config.attributes.color;
     this.forces = [];
-    console.log("PointMassKinematic created:", { id, position: this.position, velocity: this.velocity, mass: this.mass });
+    //console.log("PointMassKinematic created:", { id, position: this.position, velocity: this.velocity, mass: this.mass });
   }
 
   update(dt: number): void {
     this.velocity = this.velocity.add(this.acceleration.scale(dt));
     this.position = this.position.add(this.velocity.scale(dt));
     this.acceleration = new Vector2(0, 0);
-    console.log("PointMassKinematic update:", {
-      id: this.id,
-      position: this.position,
-      velocity: this.velocity,
-      dt,
-    });
+    //console.log("PointMassKinematic update:", {
+    //   id: this.id,
+    //   position: this.position,
+    //   velocity: this.velocity,
+    //   dt,
+    // });
   }
 
   applyForce(force: Vector2): void {
     if (this.mass !== Infinity && this.mass > 0) {
       const acceleration = force.scale(1 / this.mass);
       this.acceleration = this.acceleration.add(acceleration);
-      console.log("PointMassKinematic force applied:", {
-        id: this.id,
-        force,
-        acceleration,
-        totalAcceleration: this.acceleration,
-      });
+      //console.log("PointMassKinematic force applied:", {
+      //   id: this.id,
+      //   force,
+      //   acceleration,
+      //   totalAcceleration: this.acceleration,
+      // });
     }
   }
 
@@ -197,7 +197,7 @@ export class KinematicsEngine {
   }
 
   addObject(id: string, type: string, config: PhysicsObjectConfig) {
-    console.log("KinematicsEngine: Adding object", { id, type, config });
+    //console.log("KinematicsEngine: Adding object", { id, type, config });
     const lowerType = type.toLowerCase();
     if (lowerType === "moving object") {
       this.objects.set(id, new PointMassKinematic(id, config));
@@ -207,7 +207,7 @@ export class KinematicsEngine {
   }
 
   updateObject(id: string, config: PhysicsObjectConfig) {
-    console.log("KinematicsEngine: Updating object", { id, config });
+    //console.log("KinematicsEngine: Updating object", { id, config });
     const obj = this.objects.get(id);
     if (obj instanceof PointMassKinematic) {
       obj.position = new Vector2(
@@ -236,12 +236,12 @@ export class KinematicsEngine {
   }
 
   removeObject(id: string) {
-    console.log("KinematicsEngine: Removing object", { id });
+    //console.log("KinematicsEngine: Removing object", { id });
     this.objects.delete(id);
   }
 
   addForce(id: string, config: ForceConfig) {
-    console.log("KinematicsEngine: Adding force", { id, config });
+    //console.log("KinematicsEngine: Adding force", { id, config });
     if (config.targetObjectId) {
       const obj = this.objects.get(config.targetObjectId);
       if (obj) {
@@ -253,7 +253,7 @@ export class KinematicsEngine {
   }
 
   removeForce(id: string) {
-    console.log("KinematicsEngine: Removing force", { id });
+    //console.log("KinematicsEngine: Removing force", { id });
     this.objects.forEach((obj) => {
       obj.forces = obj.forces.filter((f) => f.id !== id);
     });
@@ -261,7 +261,7 @@ export class KinematicsEngine {
   }
 
   removeForcesForObject(id: string) {
-    console.log("KinematicsEngine: Removing forces for object", { id });
+    //console.log("KinematicsEngine: Removing forces for object", { id });
     const obj = this.objects.get(id);
     if (obj) {
       obj.forces = [];
@@ -280,7 +280,7 @@ export class KinematicsEngine {
   }
 
   reset() {
-    console.log("KinematicsEngine: Resetting");
+    //console.log("KinematicsEngine: Resetting");
     this.objects.clear();
     this.globalForces.clear();
     this.isRunning = false;
@@ -396,19 +396,19 @@ export class KinematicsEngine {
       type: obj.constructor.name,
       config: obj.getState(),
     }));
-    console.log("KinematicsEngine: getObjects called", { objects });
+    //console.log("KinematicsEngine: getObjects called", { objects });
     return objects;
   }
 
   getForces() {
     const forces = Object.fromEntries(this.globalForces);
-    console.log("KinematicsEngine: getForces called", { forces });
+    //console.log("KinematicsEngine: getForces called", { forces });
     return forces;
   }
 
   getState() {
     const state = Array.from(this.objects.values()).map((obj) => obj.getState());
-    console.log("KinematicsEngine: getState called", { state, objectsCount: this.objects.size });
+    //console.log("KinematicsEngine: getState called", { state, objectsCount: this.objects.size });
     return state;
   }
 

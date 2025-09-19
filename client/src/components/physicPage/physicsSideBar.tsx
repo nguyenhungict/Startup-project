@@ -1,6 +1,6 @@
 
 // src/components/physicPage/PhysicsSidebar.tsx
-import React, { type JSX } from "react";
+import  { type JSX } from "react";
 import { CogIcon, ChartBarIcon, SpeakerWaveIcon, LightBulbIcon, BoltIcon, FireIcon, GlobeAltIcon } from "@heroicons/react/24/outline";
 
 import type { PhysicsData } from "../../data/physicsData";

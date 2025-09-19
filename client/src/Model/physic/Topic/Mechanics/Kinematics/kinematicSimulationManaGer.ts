@@ -4,23 +4,10 @@ import { KinematicsEngine, type PhysicsObjectConfig, type ForceConfig } from "./
 
 export class KinematicSimulationManager {
   private engine: KinematicsEngine;
-  private topic: string | null;
-  private subtopic: string | null;
 
   constructor() {
     this.engine = new KinematicsEngine();
-    this.topic = null;
-    this.subtopic = null;
-  }
 
-  setTopic(topic: string | null): void {
-    this.topic = topic;
-    console.log("KinematicSimulationManager: Topic set to", topic);
-  }
-
-  setSubtopic(subtopic: string | null): void {
-    this.subtopic = subtopic;
-    console.log("KinematicSimulationManager: Subtopic set to", subtopic);
   }
 
   addObjectFromType(objectType: string, id: string = `obj_${Date.now()}`, initialAttributes: Record<string, any> = {}) {
@@ -230,8 +217,6 @@ updateItem(id: string, type: string, attributes: Record<string, any>, isSupportT
 
   getSimulationData() {
     const data = {
-      topic: this.topic,
-      subtopic: this.subtopic,
       settings: {},
       objects: this.engine.getObjects(),
       forces: this.engine.getForces(),

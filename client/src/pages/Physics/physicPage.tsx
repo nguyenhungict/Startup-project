@@ -1,4 +1,3 @@
-// src/pages/Physics/physicPage.tsx
 import React, { useMemo } from "react";
 import { ArrowLeftIcon } from "@heroicons/react/24/solid";
 import { useSimulation } from "../../hooks/physicsPage/useSimulation";
@@ -41,13 +40,28 @@ const PhysicPage: React.FC = () => {
     gravity,
     updateGravity,
     handleCanvasObjectClick,
-    setPendingToolType
+    setPendingToolType,
   } = useSimulation();
 
   const memoizedSelectedObjects = useMemo(() => selectedObjects, [selectedObjects]);
   const memoizedObjectAttributes = useMemo(() => objectAttributes, [objectAttributes]);
   const memoizedGlobalToolAttributes = useMemo(() => globalToolAttributes, [globalToolAttributes]);
   const memoizedObjectToolAttributes = useMemo(() => objectToolAttributes, [objectToolAttributes]);
+
+  const popupTools = useMemo(
+    () =>
+      popupItem?.kind === "object"
+        ? selectedObjectTools
+            .filter((t) => t.targetObjectId === popupItem.id)
+            .map((t) => ({
+              id: t.id,
+              name: t.type,
+              attributesConfig: getAttributesConfig(t.type, "objectTool"),
+              attributes: memoizedObjectToolAttributes[t.id] ?? {},
+            }))
+        : [],
+    [popupItem, selectedObjectTools, memoizedObjectToolAttributes]
+  );
 
   console.log("PhysicPage passing to Canvas:", { memoizedSelectedObjects, memoizedObjectAttributes });
 
@@ -195,13 +209,14 @@ const PhysicPage: React.FC = () => {
             attributesConfig={getAttributesConfig(popupItem.type, popupItem.kind)}
             attributes={
               popupItem.kind === "object"
-                ? memoizedObjectAttributes[popupItem.id] || {}
+                ? memoizedObjectAttributes[popupItem.id] ?? {}
                 : popupItem.kind === "globalTool"
-                ? memoizedGlobalToolAttributes[popupItem.id] || {}
-                : memoizedObjectToolAttributes[popupItem.id] || {}
+                ? memoizedGlobalToolAttributes[popupItem.id] ?? {}
+                : memoizedObjectToolAttributes[popupItem.id] ?? {}
             }
+            tools={popupTools}
             onClose={handlePopupClose}
-            onSave={handlePopupSave}
+            onSave={(data) => handlePopupSave({ object: data.attributes, tools: data.tools })}
           />
         )}
       </div>
