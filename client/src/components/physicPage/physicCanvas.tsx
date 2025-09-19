@@ -210,6 +210,8 @@ const Canvas: React.FC<CanvasProps> = ({
     }
   }, [selectedObjects, objectAttributes, onObjectClick]);
 
+  
+
   // Focus on moving object
   useEffect(() => {
     if (!stageRef.current || !isRunning || selectedObjects.length === 0) return;

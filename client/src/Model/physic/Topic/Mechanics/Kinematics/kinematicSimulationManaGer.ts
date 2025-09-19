@@ -42,29 +42,45 @@ updateItem(id: string, type: string, attributes: Record<string, any>, isSupportT
     if (!isSupportTool) {
       this.updateObject(id, type, attributes);
     } else {
+      console.log("KinematicSimulationManager.updateItem", id, attributes);
       this.updateSupportTool(id, type, attributes);
     }
   }
 
   private updateObject(id: string, type: string, attributes: Record<string, any>) {
-    const { processedAttributes, forces } = this.processObjectAttributes(attributes, id);
-    const config: PhysicsObjectConfig = {
-      type: type.toLowerCase(),
-      attributes: processedAttributes,
+  const { processedAttributes, forces } = this.processObjectAttributes(attributes, id);
+
+  // ✅ If user changed initialPositionX/Y, update live position too
+  if (
+    processedAttributes.initialPositionX !== undefined &&
+    processedAttributes.initialPositionY !== undefined
+  ) {
+    processedAttributes.position = {
+      x: processedAttributes.initialPositionX,
+      y: processedAttributes.initialPositionY,
     };
-
-    if (this.hasObject(id)) {
-      this.engine.updateObject(id, config); // Assume in-place update
-    } else {
-      this.engine.addObject(id, type, config);
-    }
-
-    forces.forEach(({ id: forceId, config: forceConfig }) => {
-      this.engine.addForce(forceId, forceConfig);
-    });
-
-    console.log("KinematicSimulationManager: Updated object", { id, type, config, forces });
   }
+
+  const config: PhysicsObjectConfig = {
+    type: type.toLowerCase(),
+    attributes: processedAttributes,
+  };
+
+  if (this.hasObject(id)) {
+    this.engine.updateObject(id, config);
+  } else {
+    this.engine.addObject(id, type, config);
+  }
+
+  forces.forEach(({ id: forceId, config: forceConfig }) => {
+    this.engine.addForce(forceId, forceConfig);
+  });
+
+  console.log("KinematicSimulationManager: Updated object", { id, type, config, forces });
+}
+
+
+
 
   private updateSupportTool(id: string, type: string, attributes: Record<string, any>) {
     if (type.toLowerCase() === "surface") {

@@ -106,6 +106,7 @@ export const useAttributeForm = (
     console.log("handlePopupSave", { attributes, kind });
 
     if (kind === "object") {
+      console.log("useAttributeForm setting objectAttributes for", popupItem.id, formAttributes);
       setObjectAttributes((prev) => ({
         ...prev,
         [popupItem.id]: attributes.object,
