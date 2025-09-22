@@ -126,13 +126,60 @@ export const useSimulation = (): PhysicsPageLogic & {
     setObjectAttributes
   );
 
+    // 🔄 Sync state từ engine → React state
+  // src/hooks/physicsPage/useSimulation.ts
+useEffect(() => {
+  let rafId: number;
+
+  const syncLoop = () => {
+    if (!manager || !isSimulationRunning) {
+      rafId = requestAnimationFrame(syncLoop); // Continue loop even if paused to check state
+      return;
+    }
+
+    try {
+      const engineState = manager.getState(); // Get current state from engine
+      setObjectAttributes((prev) => {
+        const updated: Record<string, AttributeMap> = { ...prev };
+        engineState.forEach((obj: any) => {
+          // Ensure position, velocity, and acceleration are properly formatted
+          const position = {
+            x: obj.positionX ?? obj.initialPositionX ?? 200,
+            y: obj.positionY ?? obj.initialPositionY ?? 200,
+          };
+          const velocity = {
+            x: obj.velocityX ?? 0,
+            y: obj.velocityY ?? 0,
+          };
+          const acceleration = {
+            x: obj.accelerationX ?? 0,
+            y: obj.accelerationY ?? 0,
+          };
+          updated[obj.id] = {
+            ...prev[obj.id], // Preserve existing attributes (e.g., mass, color)
+            position, // Update runtime position
+            velocity, // Update velocity
+            acceleration, // Update acceleration
+          };
+        });
+        return updated;
+      });
+    } catch (error) {
+      console.error("Error syncing engine state to React:", error);
+    }
+
+    rafId = requestAnimationFrame(syncLoop);
+  };
+
+  rafId = requestAnimationFrame(syncLoop);
+  return () => cancelAnimationFrame(rafId);
+}, [manager, isSimulationRunning]);
+
+
   const supportToolAttributes = useMemo(
   () => ({ ...globalToolAttributes, ...objectToolAttributes }),
   [globalToolAttributes, objectToolAttributes]
 );
-
-
-
   const {
   formAttributes,
   handleAttributeChange,
@@ -282,8 +329,21 @@ const popupTools = useMemo(
   };
 
   const wrappedHandleRunSimulation = () => {
+    console.log("🚀 Starting simulation...");
+  console.log("Canvas objects:", canvasObjects);
+  console.log("Manager objects:", manager.getSimulationData());
+  console.log("Manager state:", manager.getState());
+    console.log("Starting simulation: calling manager.run()");
     originalHandleRunSimulation();
     manager.run();
+
+    setTimeout(() => {
+    console.log("🔍 Post-run check:", {
+      isRunning: isSimulationRunning,
+      managerData: manager.getSimulationData(),
+      engineState: manager.getState()
+    });
+  }, 100);
   };
 
   const wrappedHandleStopSimulation = () => {

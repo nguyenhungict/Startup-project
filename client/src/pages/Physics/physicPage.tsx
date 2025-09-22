@@ -63,7 +63,7 @@ const PhysicPage: React.FC = () => {
     [popupItem, selectedObjectTools, memoizedObjectToolAttributes]
   );
 
-  console.log("PhysicPage passing to Canvas:", { memoizedSelectedObjects, memoizedObjectAttributes });
+  // console.log("PhysicPage passing to Canvas:", { memoizedSelectedObjects, memoizedObjectAttributes });
 
   return (
     <div className="flex h-[calc(100vh-4rem)] overflow-hidden">

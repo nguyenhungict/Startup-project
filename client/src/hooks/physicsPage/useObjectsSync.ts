@@ -1,4 +1,4 @@
-// src/hooks/physicsPage/useObjectsSync.ts
+// src/hooks/physicsPage/useObjectsSync.ts - FIXED VERSION
 import { useEffect, useRef } from "react";
 import type { supportTool } from "./useSimulation";
 
@@ -70,8 +70,13 @@ export const useObjectsSync = (
   // - send full attribute object to manager.updateItem
   // ================================
   useEffect(() => {
-    if (isSimulationRunning) return;
+    if (isSimulationRunning) {
+      console.log("🚫 Simulation running - skipping React → Engine sync");
+      return;
+    }
 
+    console.log("🔄 React → Engine sync (simulation stopped)");
+    
     selectedObjects.forEach(obj => {
       if (obj.id in objectAttributes && manager.hasObject(obj.id)) {
         let baseAttrs = objectAttributes[obj.id] || {};
@@ -80,7 +85,6 @@ export const useObjectsSync = (
         baseAttrs = seedMissingRuntimeFields(obj.id, baseAttrs);
 
         // Build attrs to send — include all form attributes plus runtime fields
-        // (do NOT inject arbitrary defaults like {x:4,y:0} here)
         const attrsToSend = { ...baseAttrs };
 
         console.log("Syncing objectAttributes to SimulationManager:", attrsToSend);
@@ -108,8 +112,6 @@ export const useObjectsSync = (
 
   // ================================
   // Merge helper: merge engine state into prev state while preserving form attributes
-  // - keeps prev keys (like initialVelocity/initialAcceleration etc.)
-  // - prefer engine runtime values only when valid and non-zero (to avoid spurious 0,0 overwrites)
   // ================================
   const mergeEngineState = (
     prev: Record<string, any>,
@@ -130,7 +132,6 @@ export const useObjectsSync = (
       };
 
       // update runtime position only when engine gives a valid non-zero value;
-      // otherwise fallback to prevObj.position or prevObj.initialPosition
       if (simHasPos && !isZeroPos) {
         newObj.position = { x: obj.position.x, y: obj.position.y };
       } else if (prevObj.position) {
@@ -159,9 +160,9 @@ export const useObjectsSync = (
       }
 
       // other runtime fields from engine
-      newObj.mass = obj.mass ?? prevObj.mass ?? prevObj.mass ?? 1;
-      newObj.size = obj.size ?? prevObj.size ?? prevObj.size ?? 30;
-      newObj.color = obj.color ?? prevObj.color ?? prevObj.color ?? "blue";
+      newObj.mass = obj.mass ?? prevObj.mass ?? 1;
+      newObj.size = obj.size ?? prevObj.size ?? 30;
+      newObj.color = obj.color ?? prevObj.color ?? "blue";
 
       merged[obj.id] = newObj;
     });
@@ -170,24 +171,28 @@ export const useObjectsSync = (
   };
 
   // ================================
-  // Engine → React sync (when NOT running)
+  // Engine → React sync (when NOT running) - FIXED: Added missing return!
   // ================================
   useEffect(() => {
-    if (isSimulationRunning) return;
+    if (isSimulationRunning) {
+      console.log("🚫 Simulation running - skipping Engine → React sync (static)");
+      return; // ← THIS WAS MISSING!
+    }
+
+    console.log("🔄 Engine → React sync (simulation stopped)");
 
     const updateAttributes = () => {
       const state = manager.getState();
       setObjectAttributes(prev => {
         // if engine returned empty state, preserve prev entirely
         if (!Array.isArray(state) || state.length === 0) {
-          // no change, but keep prev stored copy
           prevAttributesRef.current = prev;
           return prev;
         }
 
         const merged = mergeEngineState(prev, state);
         prevAttributesRef.current = merged;
-        console.log("useObjectsSync: Updated objectAttributes", merged);
+        console.log("useObjectsSync: Updated objectAttributes (stopped)", merged);
         return merged;
       });
     };
@@ -196,24 +201,66 @@ export const useObjectsSync = (
   }, [selectedObjects, manager, setObjectAttributes, isSimulationRunning]);
 
   // ================================
-  // Engine → React sync (when RUNNING)
+  // Engine → React sync (when RUNNING) - Animation loop
   // ================================
-  useEffect(() => {
-    if (!isSimulationRunning) return;
+  // Fix for useObjectsSync - Animation Loop Effect
+useEffect(() => {
+  if (!isSimulationRunning) {
+    console.log("🚫 Simulation stopped - skipping animation loop");
+    return;
+  }
 
-    const updateAttributes = () => {
-      const state = manager.getState();
-      setObjectAttributes(prev => {
-        const merged = mergeEngineState(prev, state);
-        console.log("useObjectsSync: Simulation update", merged);
-        return merged;
+  console.log("🎬 Starting Engine → React sync animation loop");
+
+  const updateAttributes = () => {
+    const state = manager.getState();
+    
+    setObjectAttributes(prev => {
+      // Force new object creation for React to detect changes
+      const merged: Record<string, any> = {};
+      
+      // Copy all previous attributes first
+      Object.keys(prev).forEach(id => {
+        merged[id] = { ...prev[id] }; // Shallow clone each object
       });
-      animationRef.current = requestAnimationFrame(updateAttributes);
-    };
 
+      // Update with engine state
+      state.forEach((obj: any) => {
+        if (merged[obj.id]) {
+          // Create a completely new object to trigger re-render
+          merged[obj.id] = {
+            ...merged[obj.id], // Keep form fields
+            position: obj.position ? { x: obj.position.x, y: obj.position.y } : merged[obj.id].position,
+            velocityX: obj.velocity?.x ?? merged[obj.id].velocityX,
+            velocityY: obj.velocity?.y ?? merged[obj.id].velocityY,
+            accelerationX: obj.acceleration?.x ?? merged[obj.id].accelerationX,
+            accelerationY: obj.acceleration?.y ?? merged[obj.id].accelerationY,
+            // Force timestamp to ensure React sees this as a new object
+            _timestamp: performance.now()
+          };
+        }
+      });
+
+      console.log("Animation update:", {
+        stateCount: state.length,
+        mergedKeys: Object.keys(merged),
+        firstObj: merged[Object.keys(merged)[0]]
+      });
+      
+      return merged;
+    });
+    
     animationRef.current = requestAnimationFrame(updateAttributes);
-    return () => {
-      if (animationRef.current) cancelAnimationFrame(animationRef.current);
-    };
-  }, [isSimulationRunning, manager, setObjectAttributes]);
+  };
+
+  animationRef.current = requestAnimationFrame(updateAttributes);
+  
+  return () => {
+    console.log("🛑 Stopping Engine → React sync animation loop");
+    if (animationRef.current) {
+      cancelAnimationFrame(animationRef.current);
+      animationRef.current = null;
+    }
+  };
+}, [isSimulationRunning, manager, setObjectAttributes]);
 };

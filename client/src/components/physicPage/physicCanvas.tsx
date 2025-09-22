@@ -38,7 +38,7 @@ const Canvas: React.FC<CanvasProps> = ({
   useEffect(() => {
     if (containerRef.current) {
       console.log("Container size:", {
-        width: containerRef.current.offsetWidth,
+       width: containerRef.current.offsetWidth,
         height: containerRef.current.offsetHeight,
       });
     }
@@ -48,10 +48,10 @@ const Canvas: React.FC<CanvasProps> = ({
   useEffect(() => {
     if (containerRef.current && !stageRef.current) {
       try {
-        console.log("Initializing Konva stage:", {
-          width: containerRef.current.offsetWidth,
-          height: containerRef.current.offsetHeight,
-        });
+        //console.log("Initializing Konva stage:", {
+        //   width: containerRef.current.offsetWidth,
+        //   height: containerRef.current.offsetHeight,
+        // });
         stageRef.current = new Konva.Stage({
           container: containerRef.current,
           width: containerRef.current.offsetWidth || 400,
@@ -91,7 +91,7 @@ const Canvas: React.FC<CanvasProps> = ({
       if (objectType && pointer) {
         const canvasX = (pointer.x - GRID_OFFSET) / SCALE_FACTOR;
         const canvasY = -(pointer.y - stageRef.current!.height() / 2) / SCALE_FACTOR;
-        console.log("Dropping object:", { objectType, canvasX, canvasY });
+        //console.log("Dropping object:", { objectType, canvasX, canvasY });
         onObjectSelect(objectType, { x: canvasX, y: canvasY });
       } else if (objectType) {
         onObjectSelect(objectType);
@@ -106,15 +106,22 @@ const Canvas: React.FC<CanvasProps> = ({
     containerRef.current?.addEventListener("dragover", handleDragOver);
 
     return () => {
-      if (stageRef.current) {
-        stageRef.current.destroy();
-        stageRef.current = null;
-      }
-      if (animationRef.current) cancelAnimationFrame(animationRef.current);
       containerRef.current?.removeEventListener("drop", handleDrop);
       containerRef.current?.removeEventListener("dragover", handleDragOver);
     };
-  }, [onObjectSelect, onObjectToolDrop, showCoordinates]);
+  }, [ showCoordinates]);
+
+  useEffect(() => {
+  return () => {
+    if (stageRef.current) {
+      stageRef.current.destroy();
+      stageRef.current = null;
+    }
+    if (animationRef.current) {
+      cancelAnimationFrame(animationRef.current);
+    }
+  };
+}, []); // Run cleanup only when component unmounts
 
   // Draw grid and axes on gridLayerRef
   useEffect(() => {
@@ -137,7 +144,7 @@ const Canvas: React.FC<CanvasProps> = ({
   // Reset canvas (clear only object layer)
   useEffect(() => {
     if (resetTrigger > 0 && layerRef.current) {
-      console.log("Resetting canvas layer");
+      //console.log("Resetting canvas layer");
       try {
         layerRef.current.destroyChildren();
         layerRef.current.draw();
@@ -150,14 +157,14 @@ const Canvas: React.FC<CanvasProps> = ({
 
   // Render objects on layerRef
   useEffect(() => {
-    console.log("Rendering useEffect triggered:", { selectedObjects, objectAttributes });
+    //console.log("Rendering useEffect triggered:", { selectedObjects, objectAttributes });
     if (!layerRef.current || !stageRef.current) {
       console.warn("Stage or layer not initialized:", { stage: !!stageRef.current, layer: !!layerRef.current });
       return;
     }
 
     const layer = layerRef.current;
-    console.log("Clearing layer children");
+    //console.log("Clearing layer children");
     try {
       layer.destroyChildren();
 
@@ -167,12 +174,12 @@ const Canvas: React.FC<CanvasProps> = ({
           console.warn(`No attributes found for object ${obj.id}, skipping render`);
           return;
         }
-        console.log(`Rendering object ${obj.id}:`, { attrs });
+        //console.log(`Rendering object ${obj.id}:`, { attrs });
 
         const position = attrs.position || { x: 0, y: 0 };
         const canvasX = position.x * SCALE_FACTOR + GRID_OFFSET;
         const canvasY = -position.y * SCALE_FACTOR + stageRef.current!.height() / 2;
-        console.log(`Canvas coordinates for ${obj.id}:`, { canvasX, canvasY, stageHeight: stageRef.current!.height() });
+        //console.log(`Canvas coordinates for ${obj.id}:`, { canvasX, canvasY, stageHeight: stageRef.current!.height() });
 
         try {
           const shape = ObjectRenderer.renderObject(obj.type, {
@@ -184,10 +191,10 @@ const Canvas: React.FC<CanvasProps> = ({
             console.error(`ObjectRenderer returned null for ${obj.id}, type: ${obj.type}`);
             return;
           }
-          console.log(`Shape created for ${obj.id}:`, shape.toJSON());
+          //console.log(`Shape created for ${obj.id}:`, shape.toJSON());
           shape.setAttr("modelId", obj.id);
           shape.on("click", () => {
-            console.log(`Object ${obj.id} clicked`);
+            //console.log(`Object ${obj.id} clicked`);
             try {
               onObjectClick?.(obj.id);
             } catch (err) {
@@ -202,7 +209,7 @@ const Canvas: React.FC<CanvasProps> = ({
         }
       });
 
-      console.log("Drawing layer");
+      //console.log("Drawing layer");
       layer.draw();
     } catch (err) {
       console.error("Error drawing layer:", err);

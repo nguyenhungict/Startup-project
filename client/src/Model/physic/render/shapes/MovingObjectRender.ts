@@ -26,9 +26,9 @@ export class MovingObjectRenderer implements ObjectRendererInterface {
     // Draw object label (optional, simplified)
     try {
       const label = new Konva.Text({
-        x: obj.x + size / 2 + 5,
-        y: obj.y - size / 2,
-        text: obj.id.substring(0, 8), // Shortened ID for clarity
+        x: obj.x - size / 2,
+        y: obj.y - size - 5,
+        text: obj.id.slice(-4), // Shortened ID for clarity
         fontSize: 12,
         fill: "black",
       });
